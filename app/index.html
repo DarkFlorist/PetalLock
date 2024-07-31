@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+
+<head>
+	<meta charset='utf-8'>
+	<meta name="viewport" content="width=device-width">
+	<link rel='stylesheet' href='./css/index.css'>
+</head>
+<body style='margin: 0;'>
+	<script type='importmap'>
+		{
+			"imports": {
+				"preact": "./vendor/preact/preact.module.js",
+				"preact/jsx-runtime": "./vendor/preact/jsx-runtime/jsxRuntime.module.js",
+				"preact/hooks": "./vendor/preact/hooks/hooks.module.js",
+				"@preact/signals": "./vendor/@preact/signals/signals.module.js",
+				"@preact/signals-core": "./vendor/@preact/signals-core/signals-core.module.js",
+				"viem": "./vendor/viem/index.js",
+				"viem/chains": "./vendor/viem/chains/index.js",
+				"viem/window": "./vendor/viem/window/index.js",
+				"abitype": "./vendor/abitype/exports/index.js",
+				"@noble/hashes": "./vendor/@noble/hashes/index.js",
+				"@noble/hashes/crypto": "./vendor/@noble/hashes/crypto.js",
+				"@noble/hashes/sha3": "./vendor/@noble/hashes/sha3.js",
+				"@noble/hashes/utils": "./vendor/@noble/hashes/utils.js",
+				"@noble/hashes/_assert": "./vendor/@noble/hashes/_assert.js",
+				"@noble/hashes/sha256": "./vendor/@noble/hashes/sha256.js",
+				"@noble/hashes/sha512": "./vendor/@noble/hashes/sha512.js",
+				"@noble/hashes/pbkdf2": "./vendor/@noble/hashes/pbkdf2.js",
+				"@noble/hashes/hmac": "./vendor/@noble/hashes/hmac.js",
+				"@noble/hashes/ripemd160": "./vendor/@noble/hashes/ripemd160.js",
+				"@noble/curves": "./vendor/@noble/curves/index.js",
+				"@noble/curves/secp256k1": "./vendor/@noble/curves/secp256k1.js",
+				"@noble/curves/abstract/modular": "./vendor/@noble/curves/abstract/modular.js",
+				"@noble/curves/abstract/utils": "./vendor/@noble/curves/abstract/utils.js",
+				"webauthn-p256": "./vendor/webauthn-p256/index.js"
+			}
+		}
+	</script>
+
+	<main>Loading...</main>
+
+	<!-- a workaround for bug: https://bugzilla.mozilla.org/show_bug.cgi?id=1803984 -->
+	<script async type='module'>import './js/index.js'</script>
+</body>
