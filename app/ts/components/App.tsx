@@ -40,11 +40,6 @@ export function App() {
 	const checkBoxes = useSignal<CheckBoxes | undefined>(undefined)
 	const timeoutRef = useRef<number | null>(null)
 
-	const refreshInformation = () => {
-		console.log('Refreshing information with:', inputValue.value)
-		updateInfos()
-	}
-
 	const updateInfos = async () => {
 		if (!isValidEnsSubDomain(inputValue.value)) return
 
@@ -56,8 +51,8 @@ export function App() {
 			
 		const childNameHash = namehash(ensSubDomain) 
 		const parentNameHash = namehash(ensParent)
-		const childInfo = await getDomainInfo(account.value, childNameHash, ensParent)
-		const parentInfo = await getDomainInfo(account.value, parentNameHash, inputValue.value)
+		const childInfo = await getDomainInfo(account.value, childNameHash, inputValue.value)
+		const parentInfo = await getDomainInfo(account.value, parentNameHash, ensParent)
 		parentDomainInfo.value = parentInfo
 		childDomainInfo.value = childInfo
 
@@ -79,12 +74,17 @@ export function App() {
 		}
 
 		timeoutRef.current = window.setTimeout(() => {
-			refreshInformation()
+			updateInfos()
 			timeoutRef.current = null
 		}, 500)
 	}
 
 	useEffect(() => {
+		if (window.ethereum) {
+			window.ethereum.on('accountsChanged', function (accounts) {
+				account.value = accounts[0]
+			})
+		}
 		return () => {
 			if (timeoutRef.current !== null) {
 				clearTimeout(timeoutRef.current)
