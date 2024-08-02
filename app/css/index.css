@@ -6,8 +6,15 @@
 
 main {
 	display: grid;
-	width: fit-content;
+	max-width: 600px;
 	margin: 10px;
+	text-align: center;
+	border: 1px solid #ccc;
+	padding: 20px;
+	box-shadow: 0 0 100px rgba(0, 0, 0, 0.5);
+	background-color: #f9f9f9;
+	border: 2px solid #ccc;
+	border-radius: 25px;
 }
 div {
 	display: flex;
@@ -52,6 +59,9 @@ svg.spinner > circle {
 .grid-container {
 	display: grid;
 	grid-template-columns: auto auto;
+	border: 2px solid #ccc;
+	border-radius: 25px;
+	padding: 10px;
 }
 
 .grid-item {
@@ -62,4 +72,24 @@ svg.spinner > circle {
 .grid-item[colSpan] {
 	grid-column: span 2;
 	text-align: center;
+}
+
+body {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	height: 100vh;
+	margin: 0;
+	background: linear-gradient(to right,#4fabd6, #a36bdb);
+	background-blend-mode: screen;
+}
+
+.petal-lock {
+	font-size: 48px;
+	font-weight: bold;
+	background: linear-gradient(45deg, #710cd7, #198bc1);
+	justify-content: center;
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
 }

@@ -1,8 +1,9 @@
 import { createWalletClient, custom, keccak256, publicActions, toHex } from 'viem'
 import { mainnet } from 'viem/chains'
 import { ENS_WRAPPER_ABI } from './ens_wrapper_abi.js'
-import { ENS_TOKEN_WRAPPER } from './ens.js'
+import { ENS_REGISTRY_WITH_FALLBACK, ENS_TOKEN_WRAPPER } from './ens.js'
 import 'viem/window'
+import { ENS_REGISTRY_ABI } from './ens_registry.js'
 
 export function getSubstringAfterFirstPoint(input: string): string {
 	const pointIndex = input.indexOf('.')
@@ -87,6 +88,7 @@ export type DomainInfo = {
 	fuses: readonly EnsFuseName[],
 	expiry: bigint,
 	label: string,
+	registered: boolean,
 }
 
 export type AccountAddress = `0x${ string }`
@@ -96,6 +98,13 @@ export const requestAccounts = async () => {
 	const reply = await window.ethereum.request({ method: 'eth_requestAccounts', params: undefined })
 	return reply[0]
 }
+
+export const getAccounts = async () => {
+	if (window.ethereum === undefined) throw new Error('no window.ethereum injected')
+	const reply = await window.ethereum.request({ method: 'eth_accounts', params: undefined })
+	return reply[0]
+}
+
 
 const createClient = (account: AccountAddress) => {
 	if (window.ethereum === undefined) throw new Error('no window.ethereum injected')
@@ -129,6 +138,14 @@ export const getDomainInfo = async (account: AccountAddress, nameHash: `0x${ str
 		args: [BigInt(nameHash)]
 	})
 	const fuses = extractENSFuses(BigInt(data[1]))
+
+	const registered = await client.readContract({
+		address: ENS_REGISTRY_WITH_FALLBACK,
+		abi: ENS_REGISTRY_ABI, 
+		functionName: 'recordExists',
+		args: [nameHash]
+	})
+	
 	return {
 		nameHash,
 		isWrapped,
@@ -136,7 +153,8 @@ export const getDomainInfo = async (account: AccountAddress, nameHash: `0x${ str
 		data,
 		fuses,
 		expiry: data[2],
-		label
+		label,
+		registered,
 	}
 }
 
