@@ -48,3 +48,18 @@ svg.spinner > circle {
 	75% { stroke-dashoffset: 75; transform: rotate(45deg); }
 	100% { stroke-dashoffset: 280; transform: rotate(360deg); }
 }
+
+.grid-container {
+	display: grid;
+	grid-template-columns: auto auto;
+}
+
+.grid-item {
+	display: flex;
+	flex-direction: column;
+}
+
+.grid-item[colSpan] {
+	grid-column: span 2;
+	text-align: center;
+}
