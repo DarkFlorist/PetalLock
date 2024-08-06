@@ -10,6 +10,7 @@ export function jsonStringify(value: unknown, space?: string | number | undefine
 		return value as JSONValueF<unknown>
     }, space)
 }
+
 export function jsonParse(text: string): unknown {
 	return JSON.parse(text, (_key: string, value: unknown) => {
 		if (typeof value !== 'string') return value
@@ -33,4 +34,32 @@ function hexToBytes(value: string) {
 		result[i] = Number.parseInt(value.slice(i * 2 + 2, i * 2 + 4), 16)
 	}
 	return result
+}
+
+export function dataString(data: Uint8Array | null) {
+	if (data === null) return ''
+	return Array.from(data).map(x => x.toString(16).padStart(2, '0')).join('')
+}
+
+export function dataStringWith0xStart(data: Uint8Array | null) {
+	if (data === null) return ''
+	return `0x${ dataString(data) }`
+}
+
+export function decodeEthereumNameServiceString(ens: string): string {
+	const parts = ens.split('.')
+	const encodedData: string[] = []
+	encodedData.push('0x')
+
+	function stringToHex(str: string): string {
+		return Array.from(str).map((char) => char.charCodeAt(0).toString(16).padStart(2, '0')).join('')
+	}
+	parts.forEach((part) => {
+		const encodedPart = stringToHex(part)
+		const byteCount = (encodedPart.length / 2).toString(16).padStart(2, '0')
+		encodedData.push(byteCount + encodedPart)
+	})
+
+	encodedData.push('00')
+	return encodedData.join('')
 }

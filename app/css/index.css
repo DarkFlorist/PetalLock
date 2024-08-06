@@ -4,11 +4,10 @@
 	box-sizing: border-box;
 }
 
-main {
+.app {
 	display: grid;
 	max-width: 600px;
 	margin: 10px;
-	text-align: center;
 	border: 1px solid #ccc;
 	padding: 20px;
 	box-shadow: 0 0 100px rgba(0, 0, 0, 0.5);
@@ -25,7 +24,6 @@ label {
 div, label {
 	flex-wrap: wrap;
 	align-items: center;
-	gap: 0.25em;
 }
 
 /** Spinner **/
@@ -67,11 +65,12 @@ svg.spinner > circle {
 .grid-item {
 	display: flex;
 	flex-direction: column;
+	margin-bottom: 30px;
+	text-align: left;
 }
 
 .grid-item[colSpan] {
 	grid-column: span 2;
-	text-align: center;
 }
 
 body {
@@ -92,4 +91,47 @@ body {
 	-webkit-background-clip: text;
 	background-clip: text;
 	color: transparent;
+}
+
+.status {
+	font-size: 24px;
+	text-wrap: balance;
+}
+
+.paragraph {
+	margin: 0px;
+}
+
+.dim {
+	color: gray;
+	font-size: 12px;
+}
+
+.mt-8 {
+	margin-top: 2rem;
+}
+.inline-grid {
+	display: inline-grid;
+	gap: 1rem;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	margin-bottom: 2rem;
+}
+
+.text-white\/50 {
+	color: rgb(255 255 255 / 0.5);
+}
+
+.text-white {
+	color: rgb(255 255 255);
+}
+
+.text-center {
+	align-items: center;
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+}
+
+.hover\:underline:hover {
+	text-decoration-line: underline;
 }

@@ -1,9 +1,12 @@
-import { createWalletClient, custom, keccak256, publicActions, toHex } from 'viem'
+import { createWalletClient, custom, encodeAbiParameters, keccak256, publicActions, ReadContractErrorType, toHex } from 'viem'
 import { mainnet } from 'viem/chains'
 import { ENS_WRAPPER_ABI } from './ens_wrapper_abi.js'
-import { ENS_REGISTRY_WITH_FALLBACK, ENS_TOKEN_WRAPPER } from './ens.js'
+import { ENS_ETHEREUM_NAME_SERVICE, ENS_PUBLIC_RESOLVER, ENS_REGISTRY_WITH_FALLBACK, ENS_TOKEN_WRAPPER } from './ens.js'
 import 'viem/window'
 import { ENS_REGISTRY_ABI } from './ens_registry.js'
+import { ENS_BASE_REGISTRY_ABI } from './ens_base_registry_implementation_abi.js'
+import { decodeEthereumNameServiceString } from './library/utilities.js'
+import { ENS_ETHEREUM_NAME_SERVICE_ABI } from './ens_ethereum_name_service_abi.js'
 
 export function getSubstringAfterFirstPoint(input: string): string {
 	const pointIndex = input.indexOf('.')
@@ -84,6 +87,7 @@ export type DomainInfo = {
 	isWrapped: boolean,
 	nameHash: `0x${ string }`
 	owner: `0x${ string }`,
+	registeryOwner: `0x${ string }`,
 	data: readonly [`0x${ string }`, number, bigint],
 	fuses: readonly EnsFuseName[],
 	expiry: bigint,
@@ -105,7 +109,6 @@ export const getAccounts = async () => {
 	return reply[0]
 }
 
-
 const createClient = (account: AccountAddress) => {
 	if (window.ethereum === undefined) throw new Error('no window.ethereum injected')
 	if (account === undefined) throw new Error('no account!')
@@ -116,7 +119,7 @@ const createClient = (account: AccountAddress) => {
 	}).extend(publicActions)
 }
 
-export const getDomainInfo = async (account: AccountAddress, nameHash: `0x${ string }`, label: string): Promise<DomainInfo> => {
+export const getDomainInfo = async (account: AccountAddress, nameHash: `0x${ string }`, label: string, token: `0x${ string }`): Promise<DomainInfo> => {
 	const client = createClient(account)
 	const isWrapped = await client.readContract({
 		address: ENS_TOKEN_WRAPPER,
@@ -124,6 +127,7 @@ export const getDomainInfo = async (account: AccountAddress, nameHash: `0x${ str
 		functionName: 'isWrapped',
 		args: [nameHash]
 	})
+
 	const owner = await client.readContract({
 		address: ENS_TOKEN_WRAPPER,
 		abi: ENS_WRAPPER_ABI, 
@@ -145,11 +149,28 @@ export const getDomainInfo = async (account: AccountAddress, nameHash: `0x${ str
 		functionName: 'recordExists',
 		args: [nameHash]
 	})
-	
+	const getRegistryOwner = async () => {
+		try {
+			console.log(nameHash)
+			return await client.readContract({
+				address: ENS_ETHEREUM_NAME_SERVICE,
+				abi: ENS_ETHEREUM_NAME_SERVICE_ABI,
+				functionName: 'ownerOf',
+				args: [BigInt(token)]
+			})
+		} catch (e) {
+			const error = e as ReadContractErrorType
+			switch(error.name) {
+				case 'ContractFunctionExecutionError': return `0x0000000000000000000000000000000000000000`
+			}
+		}
+	}
+	const registeryOwner = await getRegistryOwner()
 	return {
 		nameHash,
 		isWrapped,
 		owner,
+		registeryOwner,
 		data,
 		fuses,
 		expiry: data[2],
@@ -158,9 +179,10 @@ export const getDomainInfo = async (account: AccountAddress, nameHash: `0x${ str
 	}
 }
 
-const parentFuseToBurn = 'Cannot Unwrap Name' as const
+export const parentFuseToBurn = 'Cannot Unwrap Name' as const
 
 export const doWeNeedToBurnParentFuses = (parentInfo: DomainInfo) => {
+	if (!parentInfo.isWrapped) return true
 	return !parentInfo.fuses.includes(parentFuseToBurn)
 }
 
@@ -180,11 +202,12 @@ export const burnParentFuses = async (account: AccountAddress, parentInfo: Domai
 	return receipt
 }
 
-const childFusesToBurn = ['Cannot Unwrap Name', 'Cannot Burn Fuses', 'Cannot Set Resolver', 'Cannot Set Time To Live',  'Cannot Create Subdomain', 'Parent Domain Cannot Control', 'Cannot Approve', 'Can Extend Expiry'] as const
+export const childFusesToBurn = ['Parent Domain Cannot Control', 'Can Extend Expiry'] as const
 
-export const doWeNeedToBurnChildFuses = (childInfo: DomainInfo, parentInfo: DomainInfo) => {
-	if (fuseNamesToUint(childInfo.fuses) != fuseNamesToUint(childFusesToBurn) && parentInfo.expiry !== childInfo.expiry) {
-		return true 
+export const doWeNeedToBurnChildFuses = (childInfo: DomainInfo) => {
+	if (!childInfo.isWrapped) return true
+	for (const requiredFuse of childFusesToBurn) {
+		if (!childInfo.fuses.includes(requiredFuse)) return true
 	}
 	return false
 }
@@ -192,7 +215,7 @@ export const doWeNeedToBurnChildFuses = (childInfo: DomainInfo, parentInfo: Doma
 export const burnChildFuses = async (account: AccountAddress, ensLabel: string, childInfo: DomainInfo, parentInfo: DomainInfo) => {
 	const client = createClient(account)
 	const ensLabelhash = keccak256(toHex(ensLabel))
-	if (doWeNeedToBurnChildFuses(childInfo, parentInfo)) {
+	if (doWeNeedToBurnChildFuses(childInfo)) {
 		const requestHash = await client.writeContract({
 			chain: mainnet, 
 			account,
@@ -207,22 +230,60 @@ export const burnChildFuses = async (account: AccountAddress, ensLabel: string, 
 	return undefined
 }
 
-/*
-const wrapDomain = ( domainInfo: DomainInfo) => {
-	if (!domainInfo.isWrapped) {
-		// wrap child
-		throw new Error('child is not wrapped') //TODO, add wrapping
-		const request = await client.writeContract({
+export const wrapDomain = async (account: AccountAddress, domainInfo: DomainInfo, subdomain: boolean) => {
+	if (domainInfo.isWrapped) return undefined
+	const client = createClient(account)
+	if (subdomain) {
+		if(await client.readContract({
+			account,
+			address: ENS_REGISTRY_WITH_FALLBACK,
+			abi: ENS_BASE_REGISTRY_ABI,
+			functionName: 'isApprovedForAll',
+			args: [account, ENS_TOKEN_WRAPPER]
+		}) === false) {
+			const requestHash1 = await client.writeContract({
+				account,
+				address: ENS_REGISTRY_WITH_FALLBACK,
+				abi: ENS_BASE_REGISTRY_ABI,
+				functionName: 'setApprovalForAll',
+				args: [ENS_TOKEN_WRAPPER, true]
+			})
+			await client.waitForTransactionReceipt({ hash: requestHash1 })
+		}
+		const requestHash2 = await client.writeContract({
 			account,
 			address: ENS_TOKEN_WRAPPER,
 			abi: ENS_WRAPPER_ABI, 
 			functionName: 'wrap',
-			args: [childNameHash, parentNameHash, ENS_RESOLVER]
+			args: [ decodeEthereumNameServiceString(domainInfo.label) as `0x${ string }`, account, ENS_PUBLIC_RESOLVER]
 		})
+		const receipt = await client.waitForTransactionReceipt({ hash: requestHash2 })
+		return receipt
 	}
-	return true
+
+	const ensSubDomain = domainInfo.label
+	const [ensLabel] = ensSubDomain.split('.')
+	if (ensLabel === undefined) throw new Error('undefined sub')
+	const ensLabelhash = keccak256(toHex(ensLabel))
+	const encodedData = encodeAbiParameters(
+		[
+			{ name: 'label', type: 'string' },
+			{ name: 'owner', type: 'address' },
+			{ name: 'ownerControlledFuses', type: 'uint16' },
+			{ name: 'resolver', type: 'address' },
+		],
+		[ensLabel, account, 0, ENS_PUBLIC_RESOLVER]
+	)
+	const requestHash2 = await client.writeContract({
+		account,
+		address: ENS_ETHEREUM_NAME_SERVICE,
+		abi: ENS_BASE_REGISTRY_ABI, 
+		functionName: 'safeTransferFrom',
+		args: [account, ENS_TOKEN_WRAPPER, BigInt(ensLabelhash), encodedData]
+	})
+	const receipt = await client.waitForTransactionReceipt({ hash: requestHash2 })
+	return receipt
 }
-*/
 
 export const isValidEnsSubDomain = (subdomain: string): boolean => {
 	// Regex to validate the ENS subdomain
@@ -233,7 +294,7 @@ export const isValidEnsSubDomain = (subdomain: string): boolean => {
 const burnAddresses = ['0xdeaDDeADDEaDdeaDdEAddEADDEAdDeadDEADDEaD', '0x000000000000000000000000000000000000dEaD', '0x0000000000000000000000000000000000000000'] as const
 
 export const isChildOwnershipBurned = (childInfo: DomainInfo) => {
-	return burnAddresses.map((b) => BigInt(b)).includes(BigInt(childInfo.owner))
+	return burnAddresses.map((b) => BigInt(b)).includes(BigInt(childInfo.owner)) && childInfo.isWrapped
 }
 
 export const transferChildOwnershipAway = async (account: AccountAddress, childInfo: DomainInfo) => {
