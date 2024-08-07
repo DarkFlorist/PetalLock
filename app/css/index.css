@@ -96,6 +96,7 @@ body {
 .status {
 	font-size: 24px;
 	text-wrap: balance;
+	text-align: center;
 }
 
 .paragraph {
@@ -127,11 +128,78 @@ body {
 
 .text-center {
 	align-items: center;
-    display: flex;
-    justify-content: center;
-    flex-direction: column;
+	display: flex;
+	justify-content: center;
+	flex-direction: column;
 }
 
-.hover\:underline:hover {
-	text-decoration-line: underline;
+a {
+	color: inherit;
+	text-decoration: inherit;
+}
+
+.text-white:hover {
+	text-decoration: underline;
+}
+
+.button {
+	background: #710cd7;
+	border-radius: 5px;
+	font-weight: bold;
+	font-family: monospace;
+	color: white;
+	padding: 10px;
+	margin-left: 10px;
+	text-align: center;
+	cursor: pointer;
+	box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+	
+	border: 2px solid #ccc;
+}
+button:disabled, button[disabled] {
+	background-color: #cccccc;
+	background: #999999;
+	color: #666666;
+	border-radius: 5px;
+	border: 2px solid #ccc;
+	font-weight: bold;
+	font-family: monospace;
+	padding: 10px;
+	margin-left: 10px;
+	text-align: center;
+	cursor: pointer;
+	box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.check {
+	-webkit-appearance: none; /*hides the default checkbox*/
+	height: 20px;
+	width: 20px;
+	position: relative;
+	background-color: #FE0006;
+	text-align: center;
+	font-weight: 600;
+	color: white;
+	border-radius: 3px;
+	outline: none;
+}
+.check:checked {
+	background-color: #0E9700;
+}
+.check:before {
+	content: "✖";
+}
+.check:checked:before {
+	content: "✔";
+}
+.check:hover {
+	cursor: pointer; 
+	opacity: 0.8;
+}
+
+.sub-title {
+	text-align: center;
+	color: gray;
+	margin: 0;
+	margin-bottom: 20px;
 }

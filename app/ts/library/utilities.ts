@@ -63,3 +63,13 @@ export function decodeEthereumNameServiceString(ens: string): string {
 	encodedData.push('00')
 	return encodedData.join('')
 }
+
+export function assertNever(value: never): never {
+	throw new Error(`Unhandled discriminated union member: ${JSON.stringify(value)}`)
+}
+
+export function isSameAddress(address1: `0x${ string }` | undefined, address2: `0x${ string }` | undefined) {
+	if (address1 === undefined && address2 === undefined) return true
+	if (address1 === undefined || address2 === undefined) return false
+	return address1.toLowerCase() === address2.toLowerCase()
+}

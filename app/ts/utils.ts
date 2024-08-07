@@ -5,7 +5,7 @@ import { ENS_ETHEREUM_NAME_SERVICE, ENS_PUBLIC_RESOLVER, ENS_REGISTRY_WITH_FALLB
 import 'viem/window'
 import { ENS_REGISTRY_ABI } from './ens_registry.js'
 import { ENS_BASE_REGISTRY_ABI } from './ens_base_registry_implementation_abi.js'
-import { decodeEthereumNameServiceString } from './library/utilities.js'
+import { assertNever, decodeEthereumNameServiceString } from './library/utilities.js'
 import { ENS_ETHEREUM_NAME_SERVICE_ABI } from './ens_ethereum_name_service_abi.js'
 
 export function getSubstringAfterFirstPoint(input: string): string {
@@ -151,7 +151,6 @@ export const getDomainInfo = async (account: AccountAddress, nameHash: `0x${ str
 	})
 	const getRegistryOwner = async () => {
 		try {
-			console.log(nameHash)
 			return await client.readContract({
 				address: ENS_ETHEREUM_NAME_SERVICE,
 				abi: ENS_ETHEREUM_NAME_SERVICE_ABI,
@@ -202,11 +201,12 @@ export const burnParentFuses = async (account: AccountAddress, parentInfo: Domai
 	return receipt
 }
 
-export const childFusesToBurn = ['Parent Domain Cannot Control', 'Can Extend Expiry'] as const
+export const mandatoryChildFusesToBurn = ['Parent Domain Cannot Control'] as const
 
+export const childFusesToBurn = ['Cannot Unwrap Name', 'Cannot Burn Fuses', 'Cannot Set Resolver', 'Cannot Set Time To Live', 'Cannot Create Subdomain', 'Parent Domain Cannot Control', 'Cannot Approve', 'Can Extend Expiry'] as const
 export const doWeNeedToBurnChildFuses = (childInfo: DomainInfo) => {
 	if (!childInfo.isWrapped) return true
-	for (const requiredFuse of childFusesToBurn) {
+	for (const requiredFuse of mandatoryChildFusesToBurn) {
 		if (!childInfo.fuses.includes(requiredFuse)) return true
 	}
 	return false
@@ -234,7 +234,7 @@ export const wrapDomain = async (account: AccountAddress, domainInfo: DomainInfo
 	if (domainInfo.isWrapped) return undefined
 	const client = createClient(account)
 	if (subdomain) {
-		if(await client.readContract({
+		if (await client.readContract({
 			account,
 			address: ENS_REGISTRY_WITH_FALLBACK,
 			abi: ENS_BASE_REGISTRY_ABI,
@@ -255,7 +255,7 @@ export const wrapDomain = async (account: AccountAddress, domainInfo: DomainInfo
 			address: ENS_TOKEN_WRAPPER,
 			abi: ENS_WRAPPER_ABI, 
 			functionName: 'wrap',
-			args: [ decodeEthereumNameServiceString(domainInfo.label) as `0x${ string }`, account, ENS_PUBLIC_RESOLVER]
+			args: [decodeEthereumNameServiceString(domainInfo.label) as `0x${ string }`, account, ENS_PUBLIC_RESOLVER]
 		})
 		const receipt = await client.waitForTransactionReceipt({ hash: requestHash2 })
 		return receipt
@@ -310,4 +310,15 @@ export const transferChildOwnershipAway = async (account: AccountAddress, childI
 	})
 	const receipt = await client.waitForTransactionReceipt({ hash: requestHash })
 	return receipt
+}
+
+export const getRightSigningAddress = (transaction: 'wrapParent' | 'wrapChild' | 'parentFuses' | 'childFuses' | 'subDomainOwnership', childInfo: DomainInfo, parentInfo: DomainInfo) => {
+	switch(transaction) {
+		case 'wrapChild': return childInfo.registeryOwner
+		case 'wrapParent': return parentInfo.registeryOwner
+		case 'parentFuses': return parentInfo.owner
+		case 'childFuses': return parentInfo.owner
+		case 'subDomainOwnership': return childInfo.owner
+		default: assertNever(transaction)
+	}
 }
