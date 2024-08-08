@@ -1,136 +1,124 @@
-name: Build and Push to IPFS
+# ---------------------------------------------
+# App Setup: Install dependencies and build app
+# ---------------------------------------------
 
-on:
-  push:
-    # Publish `master` as Docker `latest` image.
-    branches:
-      - main
+	FROM node:20-alpine3.19@sha256:e96618520c7db4c3e082648678ab72a49b73367b9a1e7884cf75ac30a198e454 as builder
 
-    # Publish `v1.2.3` tags as releases.
-    tags:
-      - v*
-
-# Defines two custom environment variables for the workflow. These are used for the Container registry domain, and a name for the Docker image that this workflow builds.
-env:
-  REGISTRY: ghcr.io
-
-jobs:
-  # Push image to GitHub Packages.
-  # See also https://docs.docker.com/docker-hub/builds/
-  push:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push'
-
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Set IMAGE_TAG
-        run: echo "IMAGE_TAG=$(echo ${{ github.repository }} | tr '[A-Z]' '[a-z]')" >> $GITHUB_ENV
-
-      - name: Build image
-        run: |
-          docker build . --file Dockerfile --tag $IMAGE_TAG
-
-      # Uses the `docker/login-action` action to log in to the Container registry registry using the account and password that will publish the packages. Once published, the packages are scoped to the account defined here.
-      - name: Log in to the Container registry
-        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Push image
-        run: |
-          IMAGE_ID=ghcr.io/$IMAGE_TAG
-
-          # Strip git ref prefix from version
-          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-
-          # Strip "v" prefix from tag name
-          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
-
-          # Use Docker `latest` tag convention
-          [ "$VERSION" == "master" ] && VERSION=latest
-
-          echo IMAGE_ID=$IMAGE_ID
-          echo VERSION=$VERSION
-
-          docker tag $IMAGE_TAG $IMAGE_ID:$VERSION
-          docker push $IMAGE_ID:$VERSION
-
-          # Make image reference available to subsequent steps
-          echo "IMAGE_RELEASE_ID=$(echo $IMAGE_ID:$VERSION)" >> $GITHUB_ENV
-
-      # Run docker image script to publish app to nft.storage
-      - name: Publish to nft.storage
-        run: |
-          docker run -e NFTSTORAGE_API_KEY=${{ secrets.NFTSTORAGE_API_KEY }} $IMAGE_RELEASE_ID nft.storage
-
-      - name: Create a reference for IPFS hash
-        if: github.ref_type == 'tag'
-        run: |
-          echo "IPFS_HASH=$(docker run --entrypoint /bin/sh $IMAGE_RELEASE_ID -c 'cat /ipfs_hash.txt')" >> $GITHUB_ENV
-
-      - name: Create a release
-        if: github.ref_type == 'tag'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Markdown template for the release notes
-          RELEASE_NOTE_TEMPLATE=$(cat << EOF
-          #### IPFS Hash
-
-          \`\`\`
-          $IPFS_HASH
-          \`\`\`
-
-          You can view published versions of PetalLock through any IPFS Gateway
-
-          [ipfs://$IPFS_HASH](ipfs://$IPFS_HASH) __(Recommended)__
-          _requires Brave Browser or IPFS Desktop_
-          [https://$IPFS_HASH.ipfs.nftstorage.link](https://$IPFS_HASH.ipfs.nftstorage.link)
-          [https://$IPFS_HASH.ipfs.zoltu.io](https://$IPFS_HASH.ipfs.zoltu.io)
-          [https://$IPFS_HASH.ipfs.cf-ipfs.com](https://$IPFS_HASH.ipfs.cf-ipfs.com)
-          [https://$IPFS_HASH.ipfs.w3s.link](https://$IPFS_HASH.ipfs.w3s.link)
-          EOF
-          )
-
-          # Generate payload for creating a new release
-          PAYLOAD_TEMPLATE=$(cat <<EOF
-          {
-            "name": "$GITHUB_REF_NAME",
-            "tag_name": "$GITHUB_REF_NAME",
-            "body": $(echo "$RELEASE_NOTE_TEMPLATE" | jq -cRs '@json|fromjson'),
-            "draft": false,
-            "generate_release_notes": true
-          }
-          EOF
-          )
-
-          # Create a github release
-          # https://docs.github.com/en/rest/releases/releases?apiVersion=2022-11-28#create-a-release
-          REQUEST_DATA=$(echo "$PAYLOAD_TEMPLATE" | jq -c)
-          RESPONSE=$(curl \
-            --silent \
-            --location \
-            --request POST \
-            --header "Accept: application/vnd.github+json" \
-            --header "Authorization: Bearer $GITHUB_TOKEN" \
-            --header "X-GitHub-Api-Version: 2022-11-28" \
-            --data "$REQUEST_DATA" \
-            --write-out "%{http_code}" \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases"
-          )
-
-          # Extract the response body and the appended http code
-          RESPONSE_CODE=${RESPONSE: -3}
-          RESPONSE_BODY=${RESPONSE//$RESPONSE_CODE/}
-
-          # Successful creation will return a status 201 (Created), otherwise show the error
-          if [ "$RESPONSE_CODE" -ne  201 ]; then
-            ERROR_MESSAGE=$(echo "$RESPONSE_BODY" | jq '.message')
-            echo "HTTP $RESPONSE_CODE - $ERROR_MESSAGE"
-            exit 1
-          fi
-
-          echo "Release ($GITHUB_REF_NAME) successfully created"
+	# Install app dependencies
+	COPY ./package.json /source/package.json
+	COPY ./package-lock.json /source/package-lock.json
+	WORKDIR /source
+	RUN npm ci
+	
+	# Run the vendoring script
+	COPY ./build/ /source/build/
+	COPY ./tsconfig.vendor.json /source/tsconfig.vendor.json
+	COPY ./app/index.html /source/app/index.html
+	RUN npm run vendor
+	
+	# Buld the app
+	COPY ./tsconfig.json /source/tsconfig.json
+	COPY ./app/css/ /source/app/css/
+	COPY ./app/ts/ /source/app/ts/
+	COPY ./app/favicon.webp /source/app/favicon.webp
+	RUN npm run build
+	
+	# --------------------------------------------------------
+	# Base Image: Create the base image that will host the app
+	# --------------------------------------------------------
+	
+	# Cache the kubo image
+	FROM ipfs/kubo:v0.25.0@sha256:0c17b91cab8ada485f253e204236b712d0965f3d463cb5b60639ddd2291e7c52 as ipfs-kubo
+	
+	# Create the base image
+	FROM debian:12.6-slim@sha256:39868a6f452462b70cf720a8daff250c63e7342970e749059c105bf7c1e8eeaf
+	
+	# Add curl to the base image (7.88.1-10+deb12u6)
+	# Add jq to the base image (1.6-2.1)
+	RUN apt-get update && apt-get install -y curl=7.88.1-10+deb12u6 jq=1.6-2.1
+	
+	# Install kubo and initialize ipfs
+	COPY --from=ipfs-kubo /usr/local/bin/ipfs /usr/local/bin/ipfs
+	
+	# Copy app's build output and initialize IPFS api
+	COPY --from=builder /source/app /export
+	RUN ipfs init
+	
+	# Store the hash to a file
+	RUN ipfs add --cid-version 1 --quieter --only-hash --recursive /export > ipfs_hash.txt
+	
+	# print the hash for good measure in case someone is looking at the build logs
+	RUN cat ipfs_hash.txt
+	
+	# --------------------------------------------------------
+	# Publish Script: Option to host app locally or on nft.storage
+	# --------------------------------------------------------
+	
+	WORKDIR ~
+	COPY <<'EOF' /entrypoint.sh
+	#!/bin/sh
+	set -e
+	
+	if [ $# -ne  1 ]; then
+	  echo "Example usage: docker run --rm ghcr.io/darkflorist/PetalLock:latest [docker-host|nft.storage]"
+	  exit  1
+	fi
+	
+	case $1 in
+	
+	  docker-host)
+		# Show the IFPS build hash
+		echo "Build Hash: $(cat /ipfs_hash.txt)"
+	
+		# Determine the IPV4 address of the docker-hosted IPFS instance
+		IPFS_IP4_ADDRESS=$(getent ahostsv4 host.docker.internal | grep STREAM | head -n 1 | cut -d ' ' -f 1)
+	
+		echo "Adding files to docker running IPFS at $IPFS_IP4_ADDRESS"
+		IPFS_HASH=$(ipfs add --api /ip4/$IPFS_IP4_ADDRESS/tcp/5001 --cid-version 1 --quieter -r /export)
+		echo "Uploaded Hash: $IPFS_HASH"
+		;;
+	
+	  nft.storage)
+		if [ -z $NFTSTORAGE_API_KEY ] || [ $NFTSTORAGE_API_KEY = "" ]; then
+		  echo "NFTSTORAGE_API_KEY environment variable is not set";
+		  exit  1;
+		fi
+	
+		# Show the IFPS build hash
+		echo "Build Hash: $(cat /ipfs_hash.txt)"
+	
+		# Create a CAR archive from build hash
+		echo "Uploading files to nft.storage..."
+		IPFS_HASH=$(ipfs add --cid-version 1 --quieter -r /export)
+		ipfs dag export $IPFS_HASH > output.car
+	
+		# Upload the entire directory to nft.storage
+		UPLOAD_RESPONSE=$(curl \
+		  --request POST \
+		  --header "Authorization: Bearer $NFTSTORAGE_API_KEY" \
+		  --header "Content-Type: application/car" \
+		  --data-binary @output.car \
+		  --silent \
+		  https://api.nft.storage/upload)
+	
+		# Show link to nft.storage (https://xxx.ipfs.nftstorage.link)
+		UPLOAD_SUCCESS=$(echo "$UPLOAD_RESPONSE" | jq -r ".ok")
+	
+		if [ "$UPLOAD_SUCCESS" = "true" ]; then
+		  echo "Succesfully uploaded to https://"$(echo "$UPLOAD_RESPONSE" | jq -r ".value.cid")".ipfs.nftstorage.link"
+		else
+		  echo "Upload Failed: " $(echo "$UPLOAD_RESPONSE" | jq -r ".error | @json")
+		fi
+		;;
+	
+	  *)
+		echo "Invalid option: $1"
+		echo "Example usage: docker run --rm ghcr.io/darkflorist/PetalLock:latest [docker-host|nft.storage]"
+		exit  1
+		;;
+	esac
+	EOF
+	
+	RUN chmod u+x /entrypoint.sh
+	
+	ENTRYPOINT [ "/entrypoint.sh" ]
