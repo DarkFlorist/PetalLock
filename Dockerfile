@@ -20,7 +20,8 @@ RUN npm run vendor
 COPY ./tsconfig.json /source/tsconfig.json
 COPY ./app/css/ /source/app/css/
 COPY ./app/ts/ /source/app/ts/
-COPY ./app/favicon.webp /source/app/favicon.webp
+COPY ./app/favicon.ico /source/app/favicon.ico
+COPY ./app/favicon.svg /source/app/favicon.svg
 RUN npm run build
 
 # --------------------------------------------------------
