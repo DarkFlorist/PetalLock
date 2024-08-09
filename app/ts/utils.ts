@@ -291,7 +291,7 @@ export const isValidEnsSubDomain = (subdomain: string): boolean => {
 	return ensRegex.test(subdomain)
 }
 
-const burnAddresses = ['0xdeaDDeADDEaDdeaDdEAddEADDEAdDeadDEADDEaD', '0x000000000000000000000000000000000000dEaD', '0x0000000000000000000000000000000000000000'] as const
+const burnAddresses = ['0xdeaDDeADDEaDdeaDdEAddEADDEAdDeadDEADDEaD', '0x000000000000000000000000000000000000dEaD', '0x0000000000000000000000000000000000000000', '0xdEaD000000000000000000000000000000000000', '0x0000000000000000000000000000000000000001'] as const
 
 export const isChildOwnershipBurned = (childInfo: DomainInfo) => {
 	return burnAddresses.map((b) => BigInt(b)).includes(BigInt(childInfo.owner)) && childInfo.isWrapped

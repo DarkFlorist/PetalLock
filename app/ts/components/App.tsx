@@ -58,9 +58,8 @@ export function App() {
 
 	const updateInfos = async () => {
 		try {
-			if (!isValidEnsSubDomain(inputValue.value)) return
-
-			const ensSubDomain = inputValue.value
+			const ensSubDomain = inputValue.value.toLowerCase()
+			if (!isValidEnsSubDomain(ensSubDomain)) return
 			const ensParent = getSubstringAfterFirstPoint(ensSubDomain)
 			const [ensLabel] = ensSubDomain.split('.')
 			if (ensLabel === undefined) return
@@ -68,7 +67,7 @@ export function App() {
 				
 			const childNameHash = namehash(ensSubDomain) 
 			const parentNameHash = namehash(ensParent)
-			const childInfo = await getDomainInfo(account.value, childNameHash, inputValue.value, labelhash(inputValue.value.slice(0, inputValue.value.indexOf('.'))))
+			const childInfo = await getDomainInfo(account.value, childNameHash, ensSubDomain, labelhash(ensSubDomain.slice(0, ensSubDomain.indexOf('.'))))
 			const parentInfo = await getDomainInfo(account.value, parentNameHash, ensParent, labelhash(ensParent.slice(0, ensParent.indexOf('.'))))
 			parentDomainInfo.value = parentInfo
 			childDomainInfo.value = childInfo
@@ -180,7 +179,6 @@ export function App() {
 	const buttonBurnChildFuses = async () => {
 		try {
 			pendingCheckBoxes.value = { ...pendingCheckBoxes.peek(), childFusesBurned: true }
-			if (!isValidEnsSubDomain(inputValue.value)) return
 			const acc = account.peek()
 			if (acc === undefined) throw new Error('missing account')
 			const parentInfo = parentDomainInfo.peek()
