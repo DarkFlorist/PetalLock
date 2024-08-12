@@ -62,7 +62,6 @@ export function App() {
 	}
 
 	const updateInfos = async () => {
-		console.log('updateInfos')
 		try {
 			const ensSubDomain = inputValue.value.toLowerCase()
 			if (!isValidEnsSubDomain(ensSubDomain)) return
@@ -95,7 +94,6 @@ export function App() {
 	}
 
 	function handleInput(value: string) {
-		console.log('handleInput')
 		inputValue.value = value
 		
 		if (timeoutRef.current !== null) {

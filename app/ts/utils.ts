@@ -123,7 +123,6 @@ const createWriteClient = (account: AccountAddress) => {
 }
 
 export const getDomainInfo = async (account: AccountAddress | undefined, nameHash: `0x${ string }`, label: string, token: `0x${ string }`): Promise<DomainInfo> => {
-	console.log('getDomainInfo')
 	const client = createReadClient(account)
 	const isWrapped = await client.readContract({
 		address: ENS_TOKEN_WRAPPER,
