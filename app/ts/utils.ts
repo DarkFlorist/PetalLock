@@ -111,7 +111,7 @@ export const getAccounts = async () => {
 
 const createReadClient = (account: AccountAddress | undefined) => {
 	if (window.ethereum === undefined || account === undefined) {
-		return createPublicClient({ chain: mainnet, transport: http('https://geth.dark.florist') })
+		return createPublicClient({ chain: mainnet, transport: http('https://ethereum.dark.florist') })
 	}
 	return createWalletClient({ chain: mainnet, transport: custom(window.ethereum) }).extend(publicActions)
 }
