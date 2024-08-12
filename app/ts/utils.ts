@@ -1,4 +1,4 @@
-import { createWalletClient, custom, encodeAbiParameters, keccak256, publicActions, ReadContractErrorType, toHex } from 'viem'
+import { createPublicClient, createWalletClient, custom, encodeAbiParameters, http, keccak256, publicActions, ReadContractErrorType, toHex } from 'viem'
 import { mainnet } from 'viem/chains'
 import { ENS_WRAPPER_ABI } from './ens_wrapper_abi.js'
 import { ENS_ETHEREUM_NAME_SERVICE, ENS_PUBLIC_RESOLVER, ENS_REGISTRY_WITH_FALLBACK, ENS_TOKEN_WRAPPER } from './ens.js'
@@ -109,18 +109,21 @@ export const getAccounts = async () => {
 	return reply[0]
 }
 
-const createClient = (account: AccountAddress) => {
-	if (window.ethereum === undefined) throw new Error('no window.ethereum injected')
-	if (account === undefined) throw new Error('no account!')
-	return createWalletClient({ 
-		account: account,
-		chain: mainnet, 
-		transport: custom(window.ethereum) 
-	}).extend(publicActions)
+const createReadClient = (account: AccountAddress | undefined) => {
+	if (window.ethereum === undefined || account === undefined) {
+		return createPublicClient({ chain: mainnet, transport: http('https://ethereum.dark.florist') })
+	}
+	return createWalletClient({ chain: mainnet, transport: custom(window.ethereum) }).extend(publicActions)
 }
 
-export const getDomainInfo = async (account: AccountAddress, nameHash: `0x${ string }`, label: string, token: `0x${ string }`): Promise<DomainInfo> => {
-	const client = createClient(account)
+const createWriteClient = (account: AccountAddress) => {
+	if (window.ethereum === undefined) throw new Error('no window.ethereum injected')
+	if (account === undefined) throw new Error('no account!')
+	return createWalletClient({ account, chain: mainnet, transport: custom(window.ethereum) }).extend(publicActions)
+}
+
+export const getDomainInfo = async (account: AccountAddress | undefined, nameHash: `0x${ string }`, label: string, token: `0x${ string }`): Promise<DomainInfo> => {
+	const client = createReadClient(account)
 	const isWrapped = await client.readContract({
 		address: ENS_TOKEN_WRAPPER,
 		abi: ENS_WRAPPER_ABI, 
@@ -187,7 +190,7 @@ export const doWeNeedToBurnParentFuses = (parentInfo: DomainInfo) => {
 
 export const burnParentFuses = async (account: AccountAddress, parentInfo: DomainInfo) => {
 	if (!doWeNeedToBurnParentFuses(parentInfo)) return undefined
-	const client = createClient(account)
+	const client = createWriteClient(account)
 	const fusesUint = fuseNamesToUint([parentFuseToBurn])
 	const requestHash = await client.writeContract({
 		chain: mainnet, 
@@ -213,7 +216,7 @@ export const doWeNeedToBurnChildFuses = (childInfo: DomainInfo) => {
 }
 
 export const burnChildFuses = async (account: AccountAddress, ensLabel: string, childInfo: DomainInfo, parentInfo: DomainInfo) => {
-	const client = createClient(account)
+	const client = createWriteClient(account)
 	const ensLabelhash = keccak256(toHex(ensLabel))
 	if (doWeNeedToBurnChildFuses(childInfo)) {
 		const requestHash = await client.writeContract({
@@ -232,7 +235,7 @@ export const burnChildFuses = async (account: AccountAddress, ensLabel: string, 
 
 export const wrapDomain = async (account: AccountAddress, domainInfo: DomainInfo, subdomain: boolean) => {
 	if (domainInfo.isWrapped) return undefined
-	const client = createClient(account)
+	const client = createWriteClient(account)
 	if (subdomain) {
 		if (await client.readContract({
 			account,
@@ -299,7 +302,7 @@ export const isChildOwnershipBurned = (childInfo: DomainInfo) => {
 
 export const transferChildOwnershipAway = async (account: AccountAddress, childInfo: DomainInfo) => {
 	if (isChildOwnershipBurned(childInfo)) return undefined
-	const client = createClient(account)
+	const client = createWriteClient(account)
 	const requestHash = await client.writeContract({
 		chain: mainnet,
 		account,

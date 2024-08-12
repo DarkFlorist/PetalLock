@@ -2,7 +2,7 @@ import { Signal, useSignal } from '@preact/signals'
 import { useEffect, useRef } from 'preact/hooks'
 import { requestAccounts, AccountAddress, DomainInfo, isValidEnsSubDomain, getDomainInfo, getSubstringAfterFirstPoint, doWeNeedToBurnParentFuses, doWeNeedToBurnChildFuses, isChildOwnershipBurned, burnParentFuses, burnChildFuses, transferChildOwnershipAway, getAccounts, wrapDomain, parentFuseToBurn, childFusesToBurn, getRightSigningAddress } from '../utils.js'
 import { labelhash, namehash } from 'viem'
-import { Spinner } from './Spinner.js'
+import { BigSpinner, Spinner } from './Spinner.js'
 import { ensureError, isSameAddress } from '../library/utilities.js'
 
 type CheckBoxes = {
@@ -40,6 +40,7 @@ export function App() {
 	const parentDomainInfo = useSignal<DomainInfo | undefined>(undefined)
 	const childDomainInfo = useSignal<DomainInfo | undefined>(undefined)
 	const checkBoxes = useSignal<CheckBoxes | undefined>(undefined)
+	const loadingInfos = useSignal<boolean>(false)
 	const pendingCheckBoxes = useSignal<CheckBoxes>({
 		parentWrapped: false,
 		childWrapped: false,
@@ -51,6 +52,10 @@ export function App() {
 	const timeoutRef = useRef<number | null>(null)
 
 	const setError = (error: unknown) => {
+		if (error === undefined) {
+			errorString.value = undefined
+			return
+		}
 		const ensured = ensureError(error)
 		console.error(error)
 		errorString.value = ensured.message
@@ -63,10 +68,10 @@ export function App() {
 			const ensParent = getSubstringAfterFirstPoint(ensSubDomain)
 			const [ensLabel] = ensSubDomain.split('.')
 			if (ensLabel === undefined) return
-			if (account.value === undefined) return
 				
-			const childNameHash = namehash(ensSubDomain) 
+			const childNameHash = namehash(ensSubDomain)
 			const parentNameHash = namehash(ensParent)
+			loadingInfos.value = true
 			const childInfo = await getDomainInfo(account.value, childNameHash, ensSubDomain, labelhash(ensSubDomain.slice(0, ensSubDomain.indexOf('.'))))
 			const parentInfo = await getDomainInfo(account.value, parentNameHash, ensParent, labelhash(ensParent.slice(0, ensParent.indexOf('.'))))
 			parentDomainInfo.value = parentInfo
@@ -83,6 +88,8 @@ export function App() {
 			errorString.value = undefined
 		} catch(e: unknown) {
 			setError(e)
+		} finally {
+			loadingInfos.value = false
 		}
 	}
 
@@ -94,8 +101,11 @@ export function App() {
 		}
 
 		timeoutRef.current = window.setTimeout(() => {
-			updateInfos()
 			timeoutRef.current = null
+			const ensSubDomain = inputValue.value.toLowerCase()
+			if (!isValidEnsSubDomain(ensSubDomain)) return setError('Not valid ENS name')
+			setError(undefined)
+			updateInfos()
 		}, 500)
 	}
 
@@ -218,23 +228,25 @@ export function App() {
 		<div style ='padding: 80px'></div>
 		<div class = 'app'>
 			{ !loadingAccount.value && account.value !== undefined ? <WalletComponent account = { account } /> : <></> }
-			{ !isWindowEthereum.value ? <p class = 'paragraph' style = 'color: #b43c42;'> An Ethereum enabled wallet is required to use PetalLock.</p> : <></> }
+			{ !isWindowEthereum.value ? <p class = 'paragraph'> An Ethereum enabled wallet is required to make immutable domains.</p> : <></> }
+			
 			<div style = 'display: block'>
 				<div class = 'petal-lock'>
 					<img src = 'favicon.svg' alt = 'Icon' style ='width: 60px;'/> PetalLock
 				</div>
 				<p class = 'sub-title'>Make immutable ENS subdomains</p>
 			</div>
-			{ account.value !== undefined ? <>
-				<input 
-					class = 'input' 
-					type = 'text' 
-					placeholder = '2.horswap.eth' 
-					value = { inputValue.value } 
-					onInput = { e => handleInput(e.currentTarget.value) }
-				/>
-			</> : <></> }
-			
+		
+			<input 
+				class = 'input' 
+				type = 'text' 
+				placeholder = '2.horswap.eth' 
+				value = { inputValue.value } 
+				onInput = { e => handleInput(e.currentTarget.value) }
+			/>
+
+			{ loadingInfos.value === true ? <div style = 'max-width: fit-content; margin-inline: auto; padding: 20px;'> <BigSpinner/> </div> : <></> }
+
 			{ !loadingAccount.value && account.value === undefined ? <WalletComponent account = { account } /> : <></> }
 
 			{ errorString.value !== undefined ? <p style = 'color: #b43c42; word-break: break-all; white-space: break-spaces; border: 2px solid rgb(180, 60, 66); border-radius: 5px; padding: 10px;'> { errorString.value }</p> : <> </> }
@@ -242,7 +254,7 @@ export function App() {
 			{ childDomainInfo.value === undefined || childDomainInfo.value.registered ? <></>: <p style = 'color: #b43c42'>{ `The name ${ childDomainInfo.value.label } does not exist in the ENS registry. You need to register the domain to use PetalLock.` }</p> }
 			{ parentDomainInfo.value === undefined || parentDomainInfo.value.registered ? <></>: <p style = 'color: #b43c42'>{ `The name ${ parentDomainInfo.value.label } does not exist in the ENS registry. You need to register the domain to use PetalLock.` }</p> }
 			
-			{ childDomainInfo.value === undefined || parentDomainInfo.value === undefined || account.value === undefined || !childDomainInfo.value.registered || !parentDomainInfo.value.registered ? <></> : <>
+			{ childDomainInfo.value === undefined || parentDomainInfo.value === undefined || !childDomainInfo.value.registered || !parentDomainInfo.value.registered ? <></> : <>
 				{ checkBoxes.value?.immutable ? <p class = 'status' style = 'color: #3cb371'> {`IMMUTABLE until ${ new Date(Number(childDomainInfo.value.expiry) * 1000).toISOString() }` } </p> : <p class = 'status' style = 'color: #b43c42'> {`${ childDomainInfo.value.label } is NOT IMMUTABLE` } </p> }
 				{ checkBoxes.value?.immutable ? <></>: <p style = 'color: gray'> Execute the following transactions with an account that owns both the parent and child name to make the name Immutable </p> }
 				
@@ -257,7 +269,7 @@ export function App() {
 						</div>
 					</div>
 					<div class = 'grid-item' style = 'justify-self: end'>
-						<button class = 'button is-primary' { ...!isSameAddress(account.value, getRightSigningAddress('wrapParent', childDomainInfo.value, parentDomainInfo.value)) || checkBoxes.value?.parentWrapped || pendingCheckBoxes.value.parentWrapped ? { disabled: true } : {} } onClick = { buttonWrapParent }>
+						<button class = 'button is-primary' { ...account.value === undefined || !isSameAddress(account.value, getRightSigningAddress('wrapParent', childDomainInfo.value, parentDomainInfo.value)) || checkBoxes.value?.parentWrapped || pendingCheckBoxes.value.parentWrapped ? { disabled: true } : {} } onClick = { buttonWrapParent }>
 							Wrap { pendingCheckBoxes.value.parentWrapped ? <Spinner/> : <></> }
 						</button>
 					</div>
@@ -273,7 +285,7 @@ export function App() {
 						</div>
 					</div>
 					<div class = 'grid-item' style = 'justify-self: end'>
-						<button class = 'button is-primary' { ...!isSameAddress(account.value, getRightSigningAddress('wrapChild', childDomainInfo.value, parentDomainInfo.value)) || checkBoxes.value?.childWrapped || pendingCheckBoxes.value.childWrapped ? { disabled: true } : {} } onClick = { buttonWrapChild }>
+						<button class = 'button is-primary' { ...account.value === undefined || !isSameAddress(account.value, getRightSigningAddress('wrapChild', childDomainInfo.value, parentDomainInfo.value)) || checkBoxes.value?.childWrapped || pendingCheckBoxes.value.childWrapped ? { disabled: true } : {} } onClick = { buttonWrapChild }>
 							Wrap { pendingCheckBoxes.value.childWrapped ? <Spinner/> : <></> }
 						</button>
 					</div>
@@ -289,7 +301,7 @@ export function App() {
 						</div>
 					</div>
 					<div class = 'grid-item' style = 'justify-self: end'>
-						<button class = 'button is-primary' { ...!isSameAddress(account.value, getRightSigningAddress('parentFuses', childDomainInfo.value, parentDomainInfo.value)) || checkBoxes.value?.parentFusesBurned || pendingCheckBoxes.value.parentFusesBurned ? { disabled: true } : {} } onClick = { buttonBurnParentFuses }>
+						<button class = 'button is-primary' { ...account.value === undefined || !isSameAddress(account.value, getRightSigningAddress('parentFuses', childDomainInfo.value, parentDomainInfo.value)) || checkBoxes.value?.parentFusesBurned || pendingCheckBoxes.value.parentFusesBurned ? { disabled: true } : {} } onClick = { buttonBurnParentFuses }>
 							Burn fuses { pendingCheckBoxes.value.parentFusesBurned ? <Spinner/> : <></> }
 						</button>
 					</div>
@@ -305,7 +317,7 @@ export function App() {
 						</div>
 					</div>
 					<div class = 'grid-item' style = 'justify-self: end'>
-						<button class = 'button is-primary' { ...!isSameAddress(account.value, getRightSigningAddress('childFuses', childDomainInfo.value, parentDomainInfo.value)) || checkBoxes.value?.childFusesBurned || pendingCheckBoxes.value.childFusesBurned  ? { disabled: true } : {} } onClick = { buttonBurnChildFuses }>
+						<button class = 'button is-primary' { ...account.value === undefined || !isSameAddress(account.value, getRightSigningAddress('childFuses', childDomainInfo.value, parentDomainInfo.value)) || checkBoxes.value?.childFusesBurned || pendingCheckBoxes.value.childFusesBurned  ? { disabled: true } : {} } onClick = { buttonBurnChildFuses }>
 							Burn fuses { pendingCheckBoxes.value.childFusesBurned ? <Spinner/> : <></> }
 						</button>
 					</div>
@@ -321,7 +333,7 @@ export function App() {
 						</div>
 					</div>
 					<div class = 'grid-item' style = 'justify-self: end'>
-						<button class = 'button is-primary' { ...(!isSameAddress(account.value, getRightSigningAddress('subDomainOwnership', childDomainInfo.value, parentDomainInfo.value)) || pendingCheckBoxes.value.childOwnershipBurned || checkBoxes.value?.childOwnershipBurned || !checkBoxes.value?.childFusesBurned || !checkBoxes.value?.childFusesBurned || !checkBoxes.value?.parentWrapped || !checkBoxes.value?.childWrapped) ? { disabled: true } : {} } onClick = { buttonBurnChildOwnership }>
+						<button class = 'button is-primary' { ...account.value === undefined || (!isSameAddress(account.value, getRightSigningAddress('subDomainOwnership', childDomainInfo.value, parentDomainInfo.value)) || pendingCheckBoxes.value.childOwnershipBurned || checkBoxes.value?.childOwnershipBurned || !checkBoxes.value?.childFusesBurned || !checkBoxes.value?.childFusesBurned || !checkBoxes.value?.parentWrapped || !checkBoxes.value?.childWrapped) ? { disabled: true } : {} } onClick = { buttonBurnChildOwnership }>
 							Burn ownership { pendingCheckBoxes.value.childOwnershipBurned ? <Spinner/> : <></> }
 						</button>
 					</div>
