@@ -306,7 +306,7 @@ export function App() {
 			
 			{ childDomainInfo.value === undefined || parentDomainInfo.value === undefined || !parentDomainInfo.value.registered ? <></> : <>
 				{ checkBoxes.value?.immutable ? <p class = 'status' style = 'color: #3cb371'> {`IMMUTABLE until ${ new Date(Number(childDomainInfo.value.expiry) * 1000).toISOString() }` } </p> : <p class = 'status' style = 'color: #b43c42'> {`${ childDomainInfo.value.label } is NOT IMMUTABLE` } </p> }
-				{ checkBoxes.value?.immutable ? <></>: <p style = 'color: gray'> Execute the following transactions with an account that owns both the parent and child name to make the name Immutable </p> }
+				{ checkBoxes.value?.immutable ? <></>: <p style = 'color: gray'> Execute the following transactions to make ${ childDomainInfo.value.label } immutable. </p> }
 				
 				<div class = 'grid-container'>
 					<div class = 'grid-item' style = 'justify-self: start'>
@@ -335,7 +335,7 @@ export function App() {
 					</div>
 					<div class = 'grid-item' style = 'justify-self: end'>
 						<button class = 'button is-primary' { ...account.value === undefined || childDomainInfo.value.registered || !isSameAddress(account.value, getRightSigningAddress('createChild', childDomainInfo.value, parentDomainInfo.value)) ? { disabled: true } : {} } onClick = { buttonCreateChild }>
-							Create Subdomain { pendingCheckBoxes.value.childExists ? <Spinner/> : <></> }
+							Create Subdomain and burn subodmain fuses { pendingCheckBoxes.value.childExists? <Spinner/> : <></> }
 						</button>
 					</div>
 
