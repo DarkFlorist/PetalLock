@@ -164,7 +164,6 @@ export const tryEncodeContentHash = (contentHash: string) => {
 		if (codec === undefined || hash === undefined) throw new Error('invalid hash')
 		return encodeContentHash(codec, hash)
 	} catch(e) {
-		console.log(e)
 		return undefined
 	}
 }

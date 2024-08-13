@@ -46,7 +46,7 @@ export const getAccounts = async () => {
 
 const createReadClient = (account: AccountAddress | undefined) => {
 	if (window.ethereum === undefined || account === undefined) {
-		return createPublicClient({ chain: mainnet, transport: http('https://geth.dark.florist') })
+		return createPublicClient({ chain: mainnet, transport: http('https://geth.dark.florist', { batch: { wait: 100 } }) })
 	}
 	return createWalletClient({ chain: mainnet, transport: custom(window.ethereum) }).extend(publicActions)
 }
@@ -59,36 +59,35 @@ const createWriteClient = (account: AccountAddress) => {
 
 export const getDomainInfo = async (account: AccountAddress | undefined, nameHash: `0x${ string }`, label: string, token: `0x${ string }`): Promise<DomainInfo> => {
 	const client = createReadClient(account)
-	const isWrapped = await client.readContract({
+	const isWrappedPromise = client.readContract({
 		address: ENS_TOKEN_WRAPPER,
 		abi: ENS_WRAPPER_ABI, 
 		functionName: 'isWrapped',
 		args: [nameHash]
 	})
 
-	const owner = await client.readContract({
+	const ownerPromise = client.readContract({
 		address: ENS_TOKEN_WRAPPER,
 		abi: ENS_WRAPPER_ABI, 
 		functionName: 'ownerOf',
 		args: [BigInt(nameHash)]
 	})
 	
-	const data = await client.readContract({
+	const dataPromise = client.readContract({
 		address: ENS_TOKEN_WRAPPER,
 		abi: ENS_WRAPPER_ABI, 
 		functionName: 'getData',
 		args: [BigInt(nameHash)]
 	})
-	const fuses = extractENSFuses(BigInt(data[1]))
 
-	const registered = await client.readContract({
+	const registeredPromise = client.readContract({
 		address: ENS_REGISTRY_WITH_FALLBACK,
 		abi: ENS_REGISTRY_ABI, 
 		functionName: 'recordExists',
 		args: [nameHash]
 	})
 
-	const contentHash = await client.readContract({
+	const contentHashPromise = client.readContract({
 		address: ENS_PUBLIC_RESOLVER,
 		abi: ENS_PUBLIC_RESOLVER_ABI, 
 		functionName: 'contenthash',
@@ -109,18 +108,19 @@ export const getDomainInfo = async (account: AccountAddress | undefined, nameHas
 			}
 		}
 	}
-	const registeryOwner = await getRegistryOwner()
+	const registeryOwnerPromise = getRegistryOwner()
+	const data = await dataPromise
 	return {
 		nameHash,
-		isWrapped,
-		owner,
-		registeryOwner,
+		isWrapped: await isWrappedPromise,
+		owner: await ownerPromise,
+		registeryOwner: await registeryOwnerPromise,
 		data,
-		fuses,
+		fuses: extractENSFuses(BigInt(data[1])),
 		expiry: data[2],
 		label,
-		registered,
-		contentHash,
+		registered: await registeredPromise,
+		contentHash: await contentHashPromise,
 	}
 }
 
