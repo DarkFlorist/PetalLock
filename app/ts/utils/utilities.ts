@@ -73,3 +73,11 @@ export function isSameAddress(address1: `0x${ string }` | undefined, address2: `
 	if (address1 === undefined || address2 === undefined) return false
 	return address1.toLowerCase() === address2.toLowerCase()
 }
+
+export function getSubstringAfterFirstPoint(input: string): string {
+	const pointIndex = input.indexOf('.')
+	if (pointIndex === -1) {
+		return input // Return the original string if no point is found
+	}
+	return input.substring(pointIndex + 1)
+}

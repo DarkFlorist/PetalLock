@@ -1,10 +1,10 @@
 import { Signal, useSignal } from '@preact/signals'
 import { useEffect, useRef } from 'preact/hooks'
-import { requestAccounts, AccountAddress, DomainInfo, isValidEnsSubDomain, getDomainInfo, getSubstringAfterFirstPoint, doWeNeedToBurnParentFuses, doWeNeedToBurnChildFuses, isChildOwnershipBurned, burnParentFuses, burnChildFuses, transferChildOwnershipAway, getAccounts, wrapDomain, parentFuseToBurn, childFusesToBurn, getRightSigningAddress, createSubDomain, setContentHash } from '../utils.js'
+import { requestAccounts, AccountAddress, DomainInfo, isValidEnsSubDomain, getDomainInfo, doWeNeedToBurnParentFuses, doWeNeedToBurnChildFuses, isChildOwnershipBurned, burnParentFuses, burnChildFuses, transferChildOwnershipAway, getAccounts, wrapDomain, parentFuseToBurn, childFusesToBurn, getRightSigningAddress, createSubDomain, setContentHash } from '../utils/ensUtils.js'
 import { labelhash, namehash } from 'viem'
 import { BigSpinner, Spinner } from './Spinner.js'
-import { ensureError, isSameAddress } from '../library/utilities.js'
-import { isValidContentHashString, tryDecodeContentHash, tryEncodeContentHash } from '../contenthash.js'
+import { ensureError, getSubstringAfterFirstPoint, isSameAddress } from '../utils/utilities.js'
+import { isValidContentHashString, tryDecodeContentHash, tryEncodeContentHash } from '../utils/contenthash.js'
 
 type CheckBoxes = {
 	childExists: boolean

@@ -5,7 +5,7 @@ import { base58btc } from 'multiformats/bases/base58'
 import { base64url } from 'multiformats/bases/base64'
 import { CID } from 'multiformats/cid'
 import { create as createDigest, decode as multihashDecode } from 'multiformats/hashes/digest'
-import { assertNever } from './library/utilities.js'
+import { assertNever } from './utilities.js'
 
 export const codeToName = {
 	0xe3: 'ipfs',
