@@ -5,10 +5,10 @@ import 'viem/window'
 import { ENS_REGISTRY_ABI } from '../abi/ens_registry_abi.js'
 import { ENS_BASE_REGISTRY_ABI } from '../abi/ens_base_registry_implementation_abi.js'
 import { assertNever, decodeEthereumNameServiceString } from './utilities.js'
-import { ENS_ETHEREUM_NAME_SERVICE_ABI } from '../abi/ens_ethereum_name_service_abi.js'
 import { ENS_PUBLIC_RESOLVER_ABI } from '../abi/ens_public_resolver_abi.js'
 import { burnAddresses, CAN_DO_EVERYTHING, ENS_ETHEREUM_NAME_SERVICE, ENS_FLAGS, ENS_PUBLIC_RESOLVER, ENS_REGISTRY_WITH_FALLBACK, ENS_TOKEN_WRAPPER } from './constants.js'
 import { AccountAddress, DomainInfo, EnsFuseName } from '../types/types.js'
+import { ENS_ETHEREUM_NAME_SERVICE_ABI } from '../abi/ens_ethereum_name_service_abi.js'
 
 export const extractENSFuses = (uint: bigint): readonly EnsFuseName[] => {
 	if (uint === CAN_DO_EVERYTHING) return ['Can Do Everything']
@@ -108,6 +108,14 @@ export const getDomainInfo = async (account: AccountAddress | undefined, nameHas
 			}
 		}
 	}
+
+	const managerPromise = client.readContract({
+		address: ENS_REGISTRY_WITH_FALLBACK,
+		abi: ENS_REGISTRY_ABI,
+		functionName: 'owner',
+		args: [nameHash]
+	})
+
 	const registeryOwnerPromise = getRegistryOwner()
 	const data = await dataPromise
 	return {
@@ -121,6 +129,7 @@ export const getDomainInfo = async (account: AccountAddress | undefined, nameHas
 		label,
 		registered: await registeredPromise,
 		contentHash: await contentHashPromise,
+		manager: await managerPromise,
 	}
 }
 
@@ -297,7 +306,7 @@ export const getRightSigningAddress = (transaction: 'setContentHash' | 'wrapPare
 	switch(transaction) {
 		case 'setContentHash': return childInfo.owner
 		case 'createChild': return parentInfo.isWrapped ? parentInfo.owner : parentInfo.registeryOwner
-		case 'wrapChild': return childInfo.registeryOwner
+		case 'wrapChild': return childInfo.manager
 		case 'wrapParent': return parentInfo.registeryOwner
 		case 'parentFuses': return parentInfo.owner
 		case 'childFuses': return parentInfo.owner
