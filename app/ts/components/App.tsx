@@ -276,7 +276,6 @@ export function App() {
 	}
 	
 	return <main>
-		<div style ='padding: 80px'></div>
 		<div class = 'app'>
 			{ !loadingAccount.value && account.value !== undefined ? <WalletComponent account = { account } /> : <></> }
 			{ !isWindowEthereum.value ? <p class = 'paragraph'> An Ethereum enabled wallet is required to make immutable domains.</p> : <></> }
@@ -305,20 +304,21 @@ export function App() {
 			{ parentDomainInfo.value === undefined || parentDomainInfo.value.registered ? <></>: <p style = 'color: #b43c42'>{ `The name ${ parentDomainInfo.value.label } does not exist in the ENS registry. You need to register the domain to use PetalLock.` }</p> }
 			
 			{ childDomainInfo.value === undefined || parentDomainInfo.value === undefined || !parentDomainInfo.value.registered ? <></> : <>
-				{ checkBoxes.value?.immutable ? <p class = 'status' style = 'color: #3cb371'> {`IMMUTABLE until ${ new Date(Number(childDomainInfo.value.expiry) * 1000).toISOString() }` } </p> : <p class = 'status' style = 'color: #b43c42'> {`${ childDomainInfo.value.label } is NOT IMMUTABLE` } </p> }
-				{ checkBoxes.value?.immutable ? <></>: <p style = 'color: gray'> Execute the following transactions to make ${ childDomainInfo.value.label } immutable. </p> }
+				{ checkBoxes.value?.immutable ? <p class = 'status-green'> {`IMMUTABLE until ${ new Date(Number(childDomainInfo.value.expiry) * 1000).toISOString() }` } </p> : <p class = 'status-red'> {`${ childDomainInfo.value.label } is NOT IMMUTABLE` } </p> }
+				{ checkBoxes.value?.immutable ? <></>: <p class = 'requirement'> { childDomainInfo.value.label } should satisfy the following conditions to be immutable: </p> }
 				
 				<div class = 'grid-container'>
 					<div class = 'grid-item' style = 'justify-self: start'>
 						<div style = 'display: grid; grid-template-rows: auto auto;'>
 							<label class = 'form-control'>
+								<p class = 'paragraph requirement'> 1) </p>
 								<input type = 'checkbox' name = 'switch' class = 'check' checked = { checkBoxes.value?.parentWrapped === true } disabled = { true }/>
-								<p class = 'paragraph checkbox-text'> 1) { parentDomainInfo.value.label } is wrapped </p>
+								<p class = 'paragraph checkbox-text requirement'> { parentDomainInfo.value.label } is wrapped </p>
 							</label>
 							{ !checkBoxes.value?.parentWrapped && !isSameAddress(account.value, getRightSigningAddress('wrapParent', childDomainInfo.value, parentDomainInfo.value)) ? <p class = 'paragraph' style = 'color: #b43c42'> { `Switch to ${ getRightSigningAddress('wrapParent', childDomainInfo.value, parentDomainInfo.value) } to sign` } </p> : <></> }
 						</div>
 					</div>
-					<div class = 'grid-item' style = 'justify-self: end'>
+					<div class = 'grid-item' style = 'justify-self: end; justify-content: center;'>
 						<button class = 'button is-primary' { ...account.value === undefined || !isSameAddress(account.value, getRightSigningAddress('wrapParent', childDomainInfo.value, parentDomainInfo.value)) || checkBoxes.value?.parentWrapped || pendingCheckBoxes.value.parentWrapped ? { disabled: true } : {} } onClick = { buttonWrapParent }>
 							Wrap { pendingCheckBoxes.value.parentWrapped ? <Spinner/> : <></> }
 						</button>
@@ -327,13 +327,14 @@ export function App() {
 					<div class = 'grid-item' style = 'justify-self: start'>
 						<div style = 'display: grid; grid-template-rows: auto auto;'>
 							<label class = 'form-control'>
+								<p class = 'paragraph requirement'> 2) </p>
 								<input type = 'checkbox' name = 'switch' class = 'check' checked = { checkBoxes.value?.childExists === true } disabled = { true }/>
-								<p class = 'paragraph checkbox-text'> 2) { childDomainInfo.value.label } exists </p>
+								<p class = 'paragraph checkbox-text requirement'> { childDomainInfo.value.label } exists </p>
 							</label>
 							{ !childDomainInfo.value.registered && !isSameAddress(account.value, getRightSigningAddress('createChild', childDomainInfo.value, parentDomainInfo.value)) ? <p class = 'paragraph' style = 'color: #b43c42'> { `Switch to ${ getRightSigningAddress('createChild', childDomainInfo.value, parentDomainInfo.value) } to sign` } </p> : <></> }
 						</div>
 					</div>
-					<div class = 'grid-item' style = 'justify-self: end'>
+					<div class = 'grid-item' style = 'justify-self: end; justify-content: center;'>
 						<button class = 'button is-primary' { ...account.value === undefined || childDomainInfo.value.registered || !isSameAddress(account.value, getRightSigningAddress('createChild', childDomainInfo.value, parentDomainInfo.value)) ? { disabled: true } : {} } onClick = { buttonCreateChild }>
 							Create Subdomain and burn subodmain fuses { pendingCheckBoxes.value.childExists? <Spinner/> : <></> }
 						</button>
@@ -342,8 +343,9 @@ export function App() {
 					<div class = 'grid-item' style = 'justify-self: start; width: 100%;'>
 						<div style = 'display: grid; grid-template-rows: auto auto; width: 100%;'>
 							<label class = 'form-control'>
+								<p class = 'paragraph requirement'> 3) </p>
 								<input type = 'checkbox' name = 'switch' class = 'check' checked = { childDomainInfo.value.contentHash !== '0x' } disabled = { true }/>
-								<p class = 'paragraph checkbox-text'> 3) Content hash is set </p>
+								<p class = 'paragraph checkbox-text requirement'> Content hash is set </p>
 							</label>
 							{ tryDecodeContentHash(childDomainInfo.value.contentHash) !== undefined ? <p class = 'paragraph dim'> Current content hash: { tryDecodeContentHash(childDomainInfo.value.contentHash) }.</p> : <>
 								<p class = 'paragraph dim'> The content hash needs to be set for the domain to be useful.` </p>
@@ -360,7 +362,7 @@ export function App() {
 							</> }
 						</div>
 					</div>
-					<div class = 'grid-item' style = 'justify-self: end'>
+					<div class = 'grid-item' style = 'justify-self: end; justify-content: center;'>
 						<button class = 'button is-primary' { ...account.value === undefined || !isValidContentHashString(contentHashInput.value) || childDomainInfo.value.contentHash !== '0x' || !isSameAddress(account.value, getRightSigningAddress('setContentHash', childDomainInfo.value, parentDomainInfo.value)) ? { disabled: true } : {} } onClick = { buttonSetContentHash }>
 							Set content hash { pendingCheckBoxes.value.childContentHashIsSet ? <Spinner/> : <></> }
 						</button>
@@ -369,14 +371,15 @@ export function App() {
 					<div class = 'grid-item' style = 'justify-self: start'>
 						<div style = 'display: grid; grid-template-rows: auto auto;'>
 							<label class = 'form-control'>
+								<p class = 'paragraph requirement'> 4) </p>
 								<input type = 'checkbox' name = 'switch' class = 'check' checked = { checkBoxes.value?.childWrapped === true } disabled = { true }/>
-								<p class = 'paragraph checkbox-text'> 4) { childDomainInfo.value.label } is wrapped </p>
+								<p class = 'paragraph checkbox-text requirement'> { childDomainInfo.value.label } is wrapped </p>
 							</label>
 							<p class = 'paragraph dim'> { `Requires approve all from the owner (asked if needed)` } </p>
 							{ !checkBoxes.value?.childWrapped && !isSameAddress(account.value, getRightSigningAddress('wrapChild', childDomainInfo.value, parentDomainInfo.value)) ? <p class = 'paragraph' style = 'color: #b43c42'> { `Switch to ${ getRightSigningAddress('wrapChild', childDomainInfo.value, parentDomainInfo.value) } to sign` } </p> : <></> }
 						</div>
 					</div>
-					<div class = 'grid-item' style = 'justify-self: end'>
+					<div class = 'grid-item' style = 'justify-self: end; justify-content: center;'>
 						<button class = 'button is-primary' { ...account.value === undefined || !isSameAddress(account.value, getRightSigningAddress('wrapChild', childDomainInfo.value, parentDomainInfo.value)) || checkBoxes.value?.childWrapped || pendingCheckBoxes.value.childWrapped ? { disabled: true } : {} } onClick = { buttonWrapChild }>
 							Wrap { pendingCheckBoxes.value.childWrapped ? <Spinner/> : <></> }
 						</button>
@@ -385,14 +388,15 @@ export function App() {
 					<div class = 'grid-item' style = 'justify-self: start'>
 						<div style = 'display: grid; grid-template-rows: auto auto;'>
 							<label class = 'form-control'>
+								<p class = 'paragraph requirement'> 5) </p>
 								<input type = 'checkbox' name = 'switch' class = 'check' checked = { checkBoxes.value?.parentFusesBurned === true } disabled = { true }/>
-								<p class = 'paragraph checkbox-text'> 5) { parentDomainInfo.value.label } fuses are burnt </p>
+								<p class = 'paragraph checkbox-text requirement'> { parentDomainInfo.value.label } fuses are burnt </p>
 							</label>
 							<p class = 'paragraph dim'> { `The fuse "${ parentFuseToBurn }" is burnt` } </p>
 							{ !checkBoxes.value?.parentFusesBurned && !isSameAddress(account.value, getRightSigningAddress('parentFuses', childDomainInfo.value, parentDomainInfo.value)) ? <p class = 'paragraph' style = 'color: #b43c42'> { `Switch to ${ getRightSigningAddress('parentFuses', childDomainInfo.value, parentDomainInfo.value) } to sign` } </p> : <></> }
 						</div>
 					</div>
-					<div class = 'grid-item' style = 'justify-self: end'>
+					<div class = 'grid-item' style = 'justify-self: end; justify-content: center;'>
 						<button class = 'button is-primary' { ...account.value === undefined || !isSameAddress(account.value, getRightSigningAddress('parentFuses', childDomainInfo.value, parentDomainInfo.value)) || checkBoxes.value?.parentFusesBurned || pendingCheckBoxes.value.parentFusesBurned ? { disabled: true } : {} } onClick = { buttonBurnParentFuses }>
 							Burn fuses { pendingCheckBoxes.value.parentFusesBurned ? <Spinner/> : <></> }
 						</button>
@@ -401,14 +405,15 @@ export function App() {
 					<div class = 'grid-item' style = 'justify-self: start'>
 						<div style = 'display: grid; grid-template-rows: auto auto;'>
 							<label class = 'form-control'>
+								<p class = 'paragraph requirement'> 6) </p>
 								<input type = 'checkbox' name = 'switch' class = 'check' checked = { checkBoxes.value?.childFusesBurned === true } disabled = { true }/>
-								<p class = 'paragraph checkbox-text'> 6) { childDomainInfo.value.label } fuses are burnt </p>
+								<p class = 'paragraph checkbox-text requirement'> { childDomainInfo.value.label } fuses are burnt </p>
 							</label>
 							<p class = 'paragraph dim'> { `The fuses ${ childFusesToBurn.map((n) => `"${ n }"`).join(', ') } are burnt` } </p>
 							{ !checkBoxes.value?.childFusesBurned && !isSameAddress(account.value, getRightSigningAddress('childFuses', childDomainInfo.value, parentDomainInfo.value)) ? <p class = 'paragraph' style = 'color: #b43c42'> { `Switch to ${ getRightSigningAddress('childFuses', childDomainInfo.value, parentDomainInfo.value) } to sign` } </p> : <></> }
 						</div>
 					</div>
-					<div class = 'grid-item' style = 'justify-self: end'>
+					<div class = 'grid-item' style = 'justify-self: end; justify-content: center;'>
 						<button class = 'button is-primary' { ...account.value === undefined || !isSameAddress(account.value, getRightSigningAddress('childFuses', childDomainInfo.value, parentDomainInfo.value)) || checkBoxes.value?.childFusesBurned || pendingCheckBoxes.value.childFusesBurned  ? { disabled: true } : {} } onClick = { buttonBurnChildFuses }>
 							Burn fuses { pendingCheckBoxes.value.childFusesBurned ? <Spinner/> : <></> }
 						</button>
@@ -417,14 +422,15 @@ export function App() {
 					<div class = 'grid-item' style = 'justify-self: start'>
 						<div style = 'display: grid; grid-template-rows: auto auto;'>
 							<label class = 'form-control'>
+								<p class = 'paragraph requirement'> 7) </p>
 								<input type = 'checkbox' name = 'switch' class = 'check' checked = { checkBoxes.value?.childOwnershipBurned === true } disabled = { true }/>
-								<p class = 'paragraph checkbox-text'> 7) { childDomainInfo.value.label } ownership is burnt </p>
+								<p class = 'paragraph checkbox-text requirement'> { childDomainInfo.value.label } ownership is burnt </p>
 							</label>
 							<p class = 'paragraph dim'> { `The ownership of subdomain is moved to an address controlled by nobody` } </p>
 							{ !isSameAddress(account.value, getRightSigningAddress('subDomainOwnership', childDomainInfo.value, parentDomainInfo.value)) && !(pendingCheckBoxes.value.childOwnershipBurned || checkBoxes.value?.childOwnershipBurned || !checkBoxes.value?.childFusesBurned || !checkBoxes.value?.childFusesBurned || !checkBoxes.value?.parentWrapped || !checkBoxes.value?.childWrapped) ? <p class = 'paragraph' style = 'color: #b43c42'> { `Switch to ${ getRightSigningAddress('subDomainOwnership', childDomainInfo.value, parentDomainInfo.value) } to sign` } </p> : <></> }
 						</div>
 					</div>
-					<div class = 'grid-item' style = 'justify-self: end'>
+					<div class = 'grid-item' style = 'justify-self: end; justify-content: center;'>
 						<button class = 'button is-primary' { ...account.value === undefined || (!isSameAddress(account.value, getRightSigningAddress('subDomainOwnership', childDomainInfo.value, parentDomainInfo.value)) || pendingCheckBoxes.value.childOwnershipBurned || checkBoxes.value?.childOwnershipBurned || !checkBoxes.value?.childContentHashIsSet || !checkBoxes.value?.childFusesBurned || !checkBoxes.value?.childFusesBurned || !checkBoxes.value?.parentWrapped || !checkBoxes.value?.childWrapped) ? { disabled: true } : {} } onClick = { buttonBurnChildOwnership }>
 							Burn ownership { pendingCheckBoxes.value.childOwnershipBurned ? <Spinner/> : <></> }
 						</button>
