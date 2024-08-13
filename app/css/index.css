@@ -100,6 +100,8 @@ body {
 	border-radius: 25px;
 	padding: 20px;
 	box-shadow: 0 0 20px rgb(180, 60, 66);
+	margin: 0px;
+	margin-bottom: 20px;
 }
 
 .status-green {
@@ -111,6 +113,14 @@ body {
 	border-radius: 25px;
 	padding: 20px;
 	box-shadow: 0 0 20px #3cb371;
+	margin: 0px;
+	margin-bottom: 20px;
+}
+
+.subdomain-header {
+	font-size: 24px;
+	text-align: center;
+	text-wrap: balance;
 }
 
 .paragraph {
