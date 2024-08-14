@@ -237,8 +237,8 @@ export const wrapDomain = async (account: AccountAddress, domainInfo: DomainInfo
 }
 
 export const isValidEnsSubDomain = (subdomain: string): boolean => {
-	// Regex to validate the ENS subdomain
-	const ensRegex = /^(?!-)[a-zA-Z0-9-]+(?<!-)\.([a-zA-Z0-9-]+\.)?eth$/
+	// Regex to validate the ENS subdomain with infinite subdomains support
+	const ensRegex = /^(?!-)([a-zA-Z0-9-]+\.)*(?!-)[a-zA-Z0-9-]+(?<!-)\.eth$/
 	return ensRegex.test(subdomain)
 }
 
