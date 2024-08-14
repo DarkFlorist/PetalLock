@@ -6,7 +6,7 @@
 
 .app {
 	display: grid;
-	max-width: 600px;
+	max-width: 700px;
 	margin: 10px;
 	border: 1px solid #ccc;
 	padding: 20px;
@@ -153,7 +153,7 @@ a {
 	text-align: center;
 	cursor: pointer;
 	box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
-	
+	width: 200px;
 	border: 2px solid #ccc;
 }
 button:disabled, button[disabled] {

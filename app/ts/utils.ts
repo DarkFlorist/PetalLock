@@ -7,6 +7,7 @@ import { ENS_REGISTRY_ABI } from './ens_registry.js'
 import { ENS_BASE_REGISTRY_ABI } from './ens_base_registry_implementation_abi.js'
 import { assertNever, decodeEthereumNameServiceString } from './library/utilities.js'
 import { ENS_ETHEREUM_NAME_SERVICE_ABI } from './ens_ethereum_name_service_abi.js'
+import { ENS_PUBLIC_RESOLVER_ABI } from './ens_public_resolver_abi.js'
 
 export function getSubstringAfterFirstPoint(input: string): string {
 	const pointIndex = input.indexOf('.')
@@ -93,6 +94,7 @@ export type DomainInfo = {
 	expiry: bigint,
 	label: string,
 	registered: boolean,
+	contentHash: `0x${ string }`,
 }
 
 export type AccountAddress = `0x${ string }`
@@ -152,6 +154,13 @@ export const getDomainInfo = async (account: AccountAddress | undefined, nameHas
 		functionName: 'recordExists',
 		args: [nameHash]
 	})
+
+	const contentHash = await client.readContract({
+		address: ENS_PUBLIC_RESOLVER,
+		abi: ENS_PUBLIC_RESOLVER_ABI, 
+		functionName: 'contenthash',
+		args: [nameHash]
+	})
 	const getRegistryOwner = async () => {
 		try {
 			return await client.readContract({
@@ -178,6 +187,7 @@ export const getDomainInfo = async (account: AccountAddress | undefined, nameHas
 		expiry: data[2],
 		label,
 		registered,
+		contentHash,
 	}
 }
 
@@ -192,7 +202,7 @@ export const burnParentFuses = async (account: AccountAddress, parentInfo: Domai
 	if (!doWeNeedToBurnParentFuses(parentInfo)) return undefined
 	const client = createWriteClient(account)
 	const fusesUint = fuseNamesToUint([parentFuseToBurn])
-	const requestHash = await client.writeContract({
+	const hash = await client.writeContract({
 		chain: mainnet, 
 		account,
 		address: ENS_TOKEN_WRAPPER,
@@ -200,8 +210,7 @@ export const burnParentFuses = async (account: AccountAddress, parentInfo: Domai
 		functionName: 'setFuses',
 		args: [parentInfo.nameHash, fusesUint]
 	})
-	const receipt = await client.waitForTransactionReceipt({ hash: requestHash })
-	return receipt
+	return await client.waitForTransactionReceipt({ hash })
 }
 
 export const mandatoryChildFusesToBurn = ['Parent Domain Cannot Control'] as const
@@ -219,7 +228,7 @@ export const burnChildFuses = async (account: AccountAddress, ensLabel: string, 
 	const client = createWriteClient(account)
 	const ensLabelhash = keccak256(toHex(ensLabel))
 	if (doWeNeedToBurnChildFuses(childInfo)) {
-		const requestHash = await client.writeContract({
+		const hash = await client.writeContract({
 			chain: mainnet, 
 			account,
 			address: ENS_TOKEN_WRAPPER,
@@ -227,8 +236,7 @@ export const burnChildFuses = async (account: AccountAddress, ensLabel: string, 
 			functionName: 'setChildFuses',
 			args: [parentInfo.nameHash, ensLabelhash, fuseNamesToUint(childFusesToBurn), parentInfo.expiry]
 		})
-		const receipt = await client.waitForTransactionReceipt({ hash: requestHash })
-		return receipt
+		return await client.waitForTransactionReceipt({ hash })
 	}
 	return undefined
 }
@@ -260,8 +268,7 @@ export const wrapDomain = async (account: AccountAddress, domainInfo: DomainInfo
 			functionName: 'wrap',
 			args: [decodeEthereumNameServiceString(domainInfo.label) as `0x${ string }`, account, ENS_PUBLIC_RESOLVER]
 		})
-		const receipt = await client.waitForTransactionReceipt({ hash: requestHash2 })
-		return receipt
+		return await client.waitForTransactionReceipt({ hash: requestHash2 })
 	}
 
 	const ensSubDomain = domainInfo.label
@@ -284,8 +291,7 @@ export const wrapDomain = async (account: AccountAddress, domainInfo: DomainInfo
 		functionName: 'safeTransferFrom',
 		args: [account, ENS_TOKEN_WRAPPER, BigInt(ensLabelhash), encodedData]
 	})
-	const receipt = await client.waitForTransactionReceipt({ hash: requestHash2 })
-	return receipt
+	return await client.waitForTransactionReceipt({ hash: requestHash2 })
 }
 
 export const isValidEnsSubDomain = (subdomain: string): boolean => {
@@ -303,7 +309,7 @@ export const isChildOwnershipBurned = (childInfo: DomainInfo) => {
 export const transferChildOwnershipAway = async (account: AccountAddress, childInfo: DomainInfo) => {
 	if (isChildOwnershipBurned(childInfo)) return undefined
 	const client = createWriteClient(account)
-	const requestHash = await client.writeContract({
+	const hash = await client.writeContract({
 		chain: mainnet,
 		account,
 		address: ENS_TOKEN_WRAPPER,
@@ -311,12 +317,55 @@ export const transferChildOwnershipAway = async (account: AccountAddress, childI
 		functionName: 'safeTransferFrom',
 		args: [childInfo.owner, burnAddresses[0], BigInt(childInfo.nameHash), 1n, '0x0']
 	})
-	const receipt = await client.waitForTransactionReceipt({ hash: requestHash })
-	return receipt
+	return await client.waitForTransactionReceipt({ hash })
 }
 
-export const getRightSigningAddress = (transaction: 'wrapParent' | 'wrapChild' | 'parentFuses' | 'childFuses' | 'subDomainOwnership', childInfo: DomainInfo, parentInfo: DomainInfo) => {
+export const createSubDomain = async (account: AccountAddress, childInfo: DomainInfo, parentInfo: DomainInfo) => {
+	if (childInfo.registered) return undefined
+	const client = createWriteClient(account)
+	if (parentInfo.isWrapped) {
+		const [subDomainName] = childInfo.label.split('.')
+		if (subDomainName === undefined) throw new Error('subdomain missing')
+		const hash = await client.writeContract({
+			chain: mainnet,
+			account,
+			address: ENS_TOKEN_WRAPPER,
+			abi: ENS_WRAPPER_ABI, 
+			functionName: 'setSubnodeRecord',
+			args: [parentInfo.nameHash, subDomainName, parentInfo.owner, ENS_PUBLIC_RESOLVER, 0n, fuseNamesToUint(childFusesToBurn), parentInfo.expiry]
+		})
+		return await client.waitForTransactionReceipt({ hash })
+	}
+	else {
+		const hash = await client.writeContract({
+			chain: mainnet,
+			account,
+			address: ENS_REGISTRY_WITH_FALLBACK,
+			abi: ENS_REGISTRY_ABI, 
+			functionName: 'setSubnodeRecord',
+			args: [parentInfo.nameHash, childInfo.nameHash, account, ENS_PUBLIC_RESOLVER, 0n]
+		})
+		return await client.waitForTransactionReceipt({ hash })
+	}
+}
+
+export const setContentHash = async (account: AccountAddress, node: DomainInfo, contenthash: `0x${ string }`) => {
+	const client = createWriteClient(account)
+	const hash = await client.writeContract({
+		chain: mainnet,
+		account,
+		address: ENS_PUBLIC_RESOLVER,
+		abi: ENS_PUBLIC_RESOLVER_ABI, 
+		functionName: 'setContenthash',
+		args: [node.nameHash, contenthash]
+	})
+	return await client.waitForTransactionReceipt({ hash })
+}
+
+export const getRightSigningAddress = (transaction: 'setContentHash' | 'wrapParent' | 'wrapChild' | 'parentFuses' | 'childFuses' | 'subDomainOwnership' | 'createChild', childInfo: DomainInfo, parentInfo: DomainInfo) => {
 	switch(transaction) {
+		case 'setContentHash': return childInfo.owner
+		case 'createChild': return parentInfo.isWrapped ? parentInfo.owner : parentInfo.registeryOwner
 		case 'wrapChild': return childInfo.registeryOwner
 		case 'wrapParent': return parentInfo.registeryOwner
 		case 'parentFuses': return parentInfo.owner
