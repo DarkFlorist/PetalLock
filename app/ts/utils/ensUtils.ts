@@ -7,20 +7,8 @@ import { ENS_BASE_REGISTRY_ABI } from '../abi/ens_base_registry_implementation_a
 import { assertNever, decodeEthereumNameServiceString } from './utilities.js'
 import { ENS_ETHEREUM_NAME_SERVICE_ABI } from '../abi/ens_ethereum_name_service_abi.js'
 import { ENS_PUBLIC_RESOLVER_ABI } from '../abi/ens_public_resolver_abi.js'
-import { CAN_DO_EVERYTHING, ENS_ETHEREUM_NAME_SERVICE, ENS_FLAGS, ENS_PUBLIC_RESOLVER, ENS_REGISTRY_WITH_FALLBACK, ENS_TOKEN_WRAPPER } from './constants.js'
-
-type EnsFuseName = 
-  | 'Cannot Unwrap Name'
-  | 'Cannot Burn Fuses'
-  | 'Cannot Transfer'
-  | 'Cannot Set Resolver'
-  | 'Cannot Set Time To Live'
-  | 'Cannot Create Subdomain'
-  | 'Parent Domain Cannot Control'
-  | 'Cannot Approve'
-  | 'Is .eth domain'
-  | 'Can Extend Expiry'
-  | 'Can Do Everything'
+import { burnAddresses, CAN_DO_EVERYTHING, ENS_ETHEREUM_NAME_SERVICE, ENS_FLAGS, ENS_PUBLIC_RESOLVER, ENS_REGISTRY_WITH_FALLBACK, ENS_TOKEN_WRAPPER } from './constants.js'
+import { AccountAddress, DomainInfo, EnsFuseName } from '../types/types.js'
 
 export const extractENSFuses = (uint: bigint): readonly EnsFuseName[] => {
 	if (uint === CAN_DO_EVERYTHING) return ['Can Do Everything']
@@ -43,21 +31,6 @@ export const fuseNamesToUint = (names: readonly EnsFuseName[]): number => {
 	}
 	return result
 }
-
-export type DomainInfo = {
-	isWrapped: boolean,
-	nameHash: `0x${ string }`
-	owner: `0x${ string }`,
-	registeryOwner: `0x${ string }`,
-	data: readonly [`0x${ string }`, number, bigint],
-	fuses: readonly EnsFuseName[],
-	expiry: bigint,
-	label: string,
-	registered: boolean,
-	contentHash: `0x${ string }`,
-}
-
-export type AccountAddress = `0x${ string }`
 
 export const requestAccounts = async () => {
 	if (window.ethereum === undefined) throw new Error('no window.ethereum injected')
@@ -259,8 +232,6 @@ export const isValidEnsSubDomain = (subdomain: string): boolean => {
 	const ensRegex = /^(?!-)[a-zA-Z0-9-]+(?<!-)\.([a-zA-Z0-9-]+\.)?eth$/
 	return ensRegex.test(subdomain)
 }
-
-const burnAddresses = ['0xdeaDDeADDEaDdeaDdEAddEADDEAdDeadDEADDEaD', '0x000000000000000000000000000000000000dEaD', '0x0000000000000000000000000000000000000000', '0xdEaD000000000000000000000000000000000000', '0x0000000000000000000000000000000000000001'] as const
 
 export const isChildOwnershipBurned = (childInfo: DomainInfo) => {
 	return burnAddresses.map((b) => BigInt(b)).includes(BigInt(childInfo.owner)) && childInfo.isWrapped
