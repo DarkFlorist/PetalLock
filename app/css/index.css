@@ -100,8 +100,7 @@ body {
 	border-radius: 25px;
 	padding: 20px;
 	box-shadow: 0 0 20px rgb(180, 60, 66);
-	margin: 0px;
-	margin-bottom: 20px;
+	margin: 0 0 20px 0;
 }
 
 .status-green {
