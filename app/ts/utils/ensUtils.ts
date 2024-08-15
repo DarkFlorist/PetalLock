@@ -1,21 +1,13 @@
 import { createPublicClient, createWalletClient, custom, encodeAbiParameters, http, keccak256, publicActions, ReadContractErrorType, toHex } from 'viem'
 import { mainnet } from 'viem/chains'
-import { ENS_WRAPPER_ABI } from './ens_wrapper_abi.js'
-import { ENS_ETHEREUM_NAME_SERVICE, ENS_PUBLIC_RESOLVER, ENS_REGISTRY_WITH_FALLBACK, ENS_TOKEN_WRAPPER } from './ens.js'
+import { ENS_WRAPPER_ABI } from '../abi/ens_wrapper_abi.js'
 import 'viem/window'
-import { ENS_REGISTRY_ABI } from './ens_registry.js'
-import { ENS_BASE_REGISTRY_ABI } from './ens_base_registry_implementation_abi.js'
-import { assertNever, decodeEthereumNameServiceString } from './library/utilities.js'
-import { ENS_ETHEREUM_NAME_SERVICE_ABI } from './ens_ethereum_name_service_abi.js'
-import { ENS_PUBLIC_RESOLVER_ABI } from './ens_public_resolver_abi.js'
-
-export function getSubstringAfterFirstPoint(input: string): string {
-	const pointIndex = input.indexOf('.')
-	if (pointIndex === -1) {
-		return input // Return the original string if no point is found
-	}
-	return input.substring(pointIndex + 1)
-}
+import { ENS_REGISTRY_ABI } from '../abi/ens_registry_abi.js'
+import { ENS_BASE_REGISTRY_ABI } from '../abi/ens_base_registry_implementation_abi.js'
+import { assertNever, decodeEthereumNameServiceString } from './utilities.js'
+import { ENS_ETHEREUM_NAME_SERVICE_ABI } from '../abi/ens_ethereum_name_service_abi.js'
+import { ENS_PUBLIC_RESOLVER_ABI } from '../abi/ens_public_resolver_abi.js'
+import { CAN_DO_EVERYTHING, ENS_ETHEREUM_NAME_SERVICE, ENS_FLAGS, ENS_PUBLIC_RESOLVER, ENS_REGISTRY_WITH_FALLBACK, ENS_TOKEN_WRAPPER } from './constants.js'
 
 type EnsFuseName = 
   | 'Cannot Unwrap Name'
@@ -30,42 +22,10 @@ type EnsFuseName =
   | 'Can Extend Expiry'
   | 'Can Do Everything'
 
-type EnsFuseFlag = {
-	name: EnsFuseName
-	value: bigint
-}
-
-// ENS Fuses
-export const CANNOT_UNWRAP = 1n
-export const CANNOT_BURN_FUSES = 2n
-export const CANNOT_TRANSFER = 4n
-export const CANNOT_SET_RESOLVER = 8n
-export const CANNOT_SET_TTL = 16n
-export const CANNOT_CREATE_SUBDOMAIN = 32n
-export const CANNOT_APPROVE = 64n
-export const PARENT_CANNOT_CONTROL = 1n << 16n
-export const IS_DOT_ETH = 1n << 17n
-export const CAN_EXTEND_EXPIRY = 1n << 18n
-export const CAN_DO_EVERYTHING = 0n
-
-const flags: EnsFuseFlag[] = [
-	{ name: 'Cannot Unwrap Name', value: CANNOT_UNWRAP },
-	{ name: 'Cannot Burn Fuses', value: CANNOT_BURN_FUSES },
-	{ name: 'Cannot Transfer', value: CANNOT_TRANSFER },
-	{ name: 'Cannot Set Resolver', value: CANNOT_SET_RESOLVER },
-	{ name: 'Cannot Set Time To Live', value: CANNOT_SET_TTL },
-	{ name: 'Cannot Create Subdomain', value: CANNOT_CREATE_SUBDOMAIN },
-	{ name: 'Cannot Approve', value: CANNOT_APPROVE },
-	{ name: 'Parent Domain Cannot Control', value: PARENT_CANNOT_CONTROL },
-	{ name: 'Is .eth domain', value: IS_DOT_ETH },
-	{ name: 'Can Extend Expiry', value: CAN_EXTEND_EXPIRY },
-	{ name: 'Can Do Everything', value: CAN_DO_EVERYTHING },
-]
-
 export const extractENSFuses = (uint: bigint): readonly EnsFuseName[] => {
 	if (uint === CAN_DO_EVERYTHING) return ['Can Do Everything']
 	const result: EnsFuseName[] = []
-	for (const flag of flags) {
+	for (const flag of ENS_FLAGS) {
 		if ((uint & flag.value) === flag.value && flag.value !== CAN_DO_EVERYTHING) {
 			result.push(flag.name)
 		}
@@ -76,7 +36,7 @@ export const extractENSFuses = (uint: bigint): readonly EnsFuseName[] => {
 export const fuseNamesToUint = (names: readonly EnsFuseName[]): number => {
 	let result = 0
 	for (const name of names) {
-		const flag = flags.find(flag => flag.name === name)
+		const flag = ENS_FLAGS.find(flag => flag.name === name)
 		if (flag) {
 			result |= Number(flag.value)
 		}
