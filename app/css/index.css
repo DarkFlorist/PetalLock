@@ -198,7 +198,8 @@ button:disabled, button[disabled] {
 	border-radius: 3px;
 	outline: none;
 	font-size: x-large;
-	align-items: center
+	align-items: center;
+	display: grid;
 }
 .check:checked {
 	background-color: #0E9700;
