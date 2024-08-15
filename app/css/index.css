@@ -228,8 +228,8 @@ button:disabled, button[disabled] {
 
 .form-control {
 	display: grid;
-    grid-template-columns: min-content min-content auto;
-    padding: 10px;
+	grid-template-columns: min-content min-content auto;
+	padding: 10px;
 	align-items: center;
 	gap: 10px;
 }
