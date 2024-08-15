@@ -58,7 +58,7 @@ const isCryptographicIPNS = (cid: CID): boolean => {
 			if (mh.code === 0x0 && mh.size < 36) return false
 		}
 		return true
-	} catch (_) {
+	} catch {
 		return false
 	}
 }
