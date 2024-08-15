@@ -101,7 +101,7 @@ export function App() {
 		inputTimeoutRef.current = window.setTimeout(() => {
 			inputTimeoutRef.current = null
 			const ensSubDomain = inputValue.value.toLowerCase()
-			if (!isValidEnsSubDomain(ensSubDomain)) return setError('Not valid ENS name')
+			if (!isValidEnsSubDomain(ensSubDomain)) return setError(`${ ensSubDomain } is not a valid ENS subdomain. The format should be similar to "2.horswap.eth" or "1.lunaria.darkflorist.eth"`)
 			setError(undefined)
 			updateInfos(true)
 		}, 500)
