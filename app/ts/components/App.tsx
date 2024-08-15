@@ -18,9 +18,9 @@ const WalletComponent = ({ account }: WalletComponentProps) => {
 		account.value = await requestAccounts()
 	}
 	return account.value !== undefined ? (
-		<p style = 'color: gray'>{ `Connected with ${ account.value }` }</p>
+		<p style = 'color: gray; justify-self: right;'>{ `Connected with ${ account.value }` }</p>
 	) : (
-		<button class = 'button is-primary' onClick = { connect }>
+		<button class = 'button is-primary' style = 'justify-self: right;' onClick = { connect }>
 			{ `Connect wallet` }
 		</button>
 	)
@@ -30,7 +30,7 @@ export function App() {
 	const inputValue = useSignal<string>('')
 	const contentHashInput = useSignal<string>('') 
 	const errorString = useOptionalSignal<string>(undefined)
-	const loadingAccount = useSignal<boolean>(true)
+	const loadingAccount = useSignal<boolean>(false)
 	const isWindowEthereum = useSignal<boolean>(true)
 	const account = useSignal<AccountAddress | undefined>(undefined)
 	const parentDomainInfo = useOptionalSignal<DomainInfo>(undefined)
@@ -71,8 +71,10 @@ export function App() {
 			const childNameHash = namehash(ensSubDomain)
 			const parentNameHash = namehash(ensParent)
 			if (showLoading) loadingInfos.value = true
-			const childInfo = await getDomainInfo(account.value, childNameHash, ensSubDomain, labelhash(ensSubDomain.slice(0, ensSubDomain.indexOf('.'))))
-			const parentInfo = await getDomainInfo(account.value, parentNameHash, ensParent, labelhash(ensParent.slice(0, ensParent.indexOf('.'))))
+			const childInfoPromise = getDomainInfo(account.value, childNameHash, ensSubDomain, labelhash(ensSubDomain.slice(0, ensSubDomain.indexOf('.'))))
+			const parentInfoPromise = getDomainInfo(account.value, parentNameHash, ensParent, labelhash(ensParent.slice(0, ensParent.indexOf('.'))))
+			const parentInfo = await parentInfoPromise
+			const childInfo = await childInfoPromise
 			parentDomainInfo.deepValue = parentInfo
 			childDomainInfo.deepValue = childInfo
 			checkBoxes.deepValue = {
@@ -127,6 +129,7 @@ export function App() {
 		})
 		const fetchAccount = async () => {
 			try {
+				loadingAccount.value = true
 				const fetchedAccount = await getAccounts()
 				if (fetchedAccount) account.value = fetchedAccount
 			} catch(e) {
@@ -269,9 +272,10 @@ export function App() {
 	
 	return <main>
 		<div class = 'app'>
-			{ !loadingAccount.value && account.value !== undefined ? <WalletComponent account = { account } /> : <></> }
 			{ !isWindowEthereum.value ? <p class = 'paragraph'> An Ethereum enabled wallet is required to make immutable domains.</p> : <></> }
 			
+			{ !loadingAccount.value && isWindowEthereum.value ? <WalletComponent account = { account } /> : <></> }
+
 			<div style = 'display: block'>
 				<div class = 'petal-lock'>
 					<img src = 'favicon.svg' alt = 'Icon' style ='width: 60px;'/> PetalLock
@@ -286,10 +290,8 @@ export function App() {
 				value = { inputValue.value } 
 				onInput = { e => handleInput(e.currentTarget.value) }
 			/>
-
+			
 			{ loadingInfos.value === true || loadingAccount.value ? <div style = 'max-width: fit-content; margin-inline: auto; padding: 20px;'> <BigSpinner/> </div> : <></> }
-
-			{ !loadingAccount.value && account.value === undefined ? <WalletComponent account = { account } /> : <></> }
 
 			{ errorString.deepValue !== undefined ? <p style = 'color: #b43c42; word-break: break-all; white-space: break-spaces; border: 2px solid rgb(180, 60, 66); border-radius: 5px; padding: 10px;'> { errorString.value }</p> : <> </> }
 			
