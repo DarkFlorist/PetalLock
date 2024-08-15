@@ -34,6 +34,7 @@ export type DomainInfo = {
 	label: string,
 	registered: boolean,
 	contentHash: `0x${ string }`,
+	manager: `0x${ string }`,
 }
 
 export type AccountAddress = `0x${ string }`
