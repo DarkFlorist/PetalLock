@@ -109,9 +109,8 @@ contract PetalLock {
 		}
 	}
 	
-	function onERC1155Received(address, address from, uint256, uint256, bytes memory data) public virtual returns (bytes4) {
-		// Can we somehow prevent anyone sending to this contract by accident?
-		// currently we need to mint to ourself and this need to return the selector
+	function onERC1155Received(address operator, address from, uint256, uint256, bytes memory) public virtual returns (bytes4) {
+		require(from == address(0x0) && operator == address(this), 'Do not send tokens to PetalLock');
 		return this.onERC1155Received.selector;
     }
 
