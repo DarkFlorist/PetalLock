@@ -112,11 +112,11 @@ contract PetalLock {
 	function onERC1155Received(address operator, address from, uint256, uint256, bytes memory) public virtual returns (bytes4) {
 		require(from == address(0x0) && operator == address(this), 'Do not send tokens to PetalLock');
 		return this.onERC1155Received.selector;
-    }
+	}
 
-    function onERC1155BatchReceived(address, address from, uint256[] memory, uint256[] memory, bytes memory data) public virtual returns (bytes4) {
+	function onERC1155BatchReceived(address, address from, uint256[] memory, uint256[] memory, bytes memory data) public virtual returns (bytes4) {
 		(string[] memory labels, bytes32[] memory subdomainRouteNodes, bytes32[] memory labelHashes, bytes memory contenthash) = abi.decode(data, (string[], bytes32[], bytes32[], bytes));
 		makeImmutable(from, labels, subdomainRouteNodes, labelHashes, contenthash);
-	    return this.onERC1155BatchReceived.selector;
-    }
+		return this.onERC1155BatchReceived.selector;
+	}
 }
