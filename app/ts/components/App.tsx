@@ -1,12 +1,11 @@
 import { Signal, useSignal } from '@preact/signals'
 import { useEffect, useRef } from 'preact/hooks'
-import { requestAccounts, isValidEnsSubDomain, getDomainInfo, doWeNeedToBurnParentFuses, doWeNeedToBurnChildFuses, isChildOwnershipBurned, burnParentFuses, burnChildFuses, transferChildOwnershipAway, getAccounts, wrapDomain, createSubDomain, setContentHash } from '../utils/ensUtils.js'
-import { labelhash, namehash } from 'viem'
+import { requestAccounts, isValidEnsSubDomain, doWeNeedToBurnParentFuses, doWeNeedToBurnChildFuses, isChildOwnershipBurned, getAccounts, getDomainInfos } from '../utils/ensUtils.js'
 import { BigSpinner } from './Spinner.js'
-import { ensureError, getSubstringAfterFirstPoint } from '../utils/utilities.js'
-import { isValidContentHashString, tryEncodeContentHash } from '../utils/contenthash.js'
-import { AccountAddress, CheckBoxes, DomainInfo } from '../types/types.js'
-import { BurnChildFuses, BurnDomainOwnership, BurnParentFuses, CreateChild, SetContentHash, WrapChild, WrapParent } from './requirements.js'
+import { ensureError } from '../utils/utilities.js'
+import { isValidContentHashString } from '../utils/contenthash.js'
+import { AccountAddress, CheckBoxes, DomainInfo, FinalChildChecks, ParentChecks } from '../types/types.js'
+import { Create, Immutable, Requirements } from './requirements.js'
 import { useOptionalSignal } from './PreactUtils.js'
 
 interface WalletComponentProps {
@@ -33,20 +32,11 @@ export function App() {
 	const loadingAccount = useSignal<boolean>(false)
 	const isWindowEthereum = useSignal<boolean>(true)
 	const account = useSignal<AccountAddress | undefined>(undefined)
-	const parentDomainInfo = useOptionalSignal<DomainInfo>(undefined)
-	const childDomainInfo = useOptionalSignal<DomainInfo>(undefined)
+	const pathInfo = useOptionalSignal<DomainInfo[]>(undefined)
+	const immutable = useSignal<boolean>(false)
 	const checkBoxes = useOptionalSignal<CheckBoxes>(undefined)
 	const loadingInfos = useSignal<boolean>(false)
-	const pendingCheckBoxes = useSignal<CheckBoxes>({
-		childExists: false,
-		parentWrapped: false,
-		childWrapped: false,
-		parentFusesBurned: false,
-		childFusesBurned: false,
-		childOwnershipBurned: false,
-		immutable: false,
-		childContentHashIsSet: false,
-	})
+	const creating = useSignal<boolean>(false)
 	const inputTimeoutRef = useRef<number | null>(null)
 	const contentHashTimeoutRef = useRef<number | null>(null)
 
@@ -64,29 +54,32 @@ export function App() {
 		try {
 			const ensSubDomain = inputValue.value.toLowerCase()
 			if (!isValidEnsSubDomain(ensSubDomain)) return
-			const ensParent = getSubstringAfterFirstPoint(ensSubDomain)
-			const [ensLabel] = ensSubDomain.split('.')
-			if (ensLabel === undefined) return
-				
-			const childNameHash = namehash(ensSubDomain)
-			const parentNameHash = namehash(ensParent)
 			if (showLoading) loadingInfos.value = true
-			const childInfoPromise = getDomainInfo(account.value, childNameHash, ensSubDomain, labelhash(ensSubDomain.slice(0, ensSubDomain.indexOf('.'))))
-			const parentInfoPromise = getDomainInfo(account.value, parentNameHash, ensParent, labelhash(ensParent.slice(0, ensParent.indexOf('.'))))
-			const parentInfo = await parentInfoPromise
-			const childInfo = await childInfoPromise
-			parentDomainInfo.deepValue = parentInfo
-			childDomainInfo.deepValue = childInfo
-			checkBoxes.deepValue = {
-				childExists: childInfo.registered,
-				parentWrapped: parentInfo.isWrapped,
-				childWrapped: childInfo.isWrapped,
-				parentFusesBurned: !doWeNeedToBurnParentFuses(parentInfo),
-				childFusesBurned: !doWeNeedToBurnChildFuses(childInfo),
-				childOwnershipBurned: isChildOwnershipBurned(childInfo),
-				immutable: parentInfo.isWrapped && childInfo.isWrapped && !doWeNeedToBurnParentFuses(parentInfo) && !doWeNeedToBurnChildFuses(childInfo) && isChildOwnershipBurned(childInfo),
-				childContentHashIsSet: childInfo.contentHash !== '0x'
-			}
+			const newPathInfo = await getDomainInfos(account.value, ensSubDomain)
+			pathInfo.deepValue = newPathInfo
+			immutable.value = false
+			checkBoxes.deepValue = newPathInfo.map((currElement, index): FinalChildChecks | ParentChecks => {
+				if (index === newPathInfo.length - 1) {
+					immutable.value = currElement.isWrapped && !doWeNeedToBurnChildFuses(currElement) && isChildOwnershipBurned(currElement)
+					return {
+						type: 'finalChild' as const,
+						exists: currElement.registered,
+						isWrapped: currElement.isWrapped,
+						fusesBurned: !doWeNeedToBurnChildFuses(currElement),
+						ownershipBurned: isChildOwnershipBurned(currElement),
+						immutable: currElement.isWrapped && !doWeNeedToBurnChildFuses(currElement) && isChildOwnershipBurned(currElement),
+						contentHashIsSet: currElement.contentHash !== '0x',
+						domainInfo: currElement,
+					}
+				}
+				return {
+					type: 'parent' as const,
+					exists: currElement.registered,
+					isWrapped: currElement.isWrapped,
+					fusesBurned: !doWeNeedToBurnParentFuses(currElement),
+					domainInfo: currElement,
+				}
+			})
 			errorString.value = undefined
 		} catch(e: unknown) {
 			setError(e)
@@ -148,128 +141,6 @@ export function App() {
 	
 	useEffect(() => { updateInfos(true) }, [account.value])
 
-	const buttonWrapChild = async () => {
-		try {
-			pendingCheckBoxes.value = { ...pendingCheckBoxes.peek(), childWrapped: true }
-			const acc = account.peek()
-			if (acc === undefined) throw new Error('missing account')
-			const childInfo = childDomainInfo.deepPeek()
-			if (childInfo === undefined) throw new Error('child info missing')
-			await wrapDomain(acc, childInfo, true)
-			await updateInfos(false)
-		} catch(e: unknown) {
-			setError(e)
-		} finally {
-			pendingCheckBoxes.value = { ...pendingCheckBoxes.peek(), childWrapped: false }
-		}
-	}
-	
-	const buttonWrapParent = async () => {
-		try {
-			pendingCheckBoxes.value = { ...pendingCheckBoxes.peek(), parentWrapped: true }
-			const acc = account.peek()
-			if (acc === undefined) throw new Error('missing account')
-			const parentInfo = parentDomainInfo.deepPeek()
-			if (parentInfo === undefined) throw new Error('parent info missing')
-			await wrapDomain(acc, parentInfo, false)
-			await updateInfos(false)
-		} catch(e: unknown) {
-			setError(e)
-		} finally {
-			pendingCheckBoxes.value = { ...pendingCheckBoxes.peek(), parentWrapped: false }
-		}
-	}
-
-	const buttonBurnParentFuses = async () => {
-		try {
-			pendingCheckBoxes.value = { ...pendingCheckBoxes.peek(), parentFusesBurned: true }
-			const acc = account.peek()
-			if (acc === undefined) throw new Error('missing account')
-			const parent = parentDomainInfo.deepPeek()
-			if (parent === undefined) throw new Error('parent info missing')
-			await burnParentFuses(acc, parent)
-			await updateInfos(false)
-		} catch(e: unknown) {
-			setError(e)
-		} finally {
-			pendingCheckBoxes.value = { ...pendingCheckBoxes.peek(), parentFusesBurned: false }
-		}
-	}
-
-	const buttonBurnChildFuses = async () => {
-		try {
-			pendingCheckBoxes.value = { ...pendingCheckBoxes.peek(), childFusesBurned: true }
-			const acc = account.peek()
-			if (acc === undefined) throw new Error('missing account')
-			const parentInfo = parentDomainInfo.deepPeek()
-			if (parentInfo === undefined) throw new Error('parent info missing')
-			const childInfo = childDomainInfo.deepPeek()
-			if (childInfo === undefined) throw new Error('child info missing')
-
-			const ensSubDomain = inputValue.value
-			const [ensLabel] = ensSubDomain.split('.')
-			if (ensLabel === undefined) return
-			if (account.value === undefined) return
-			await burnChildFuses(acc, ensLabel, childInfo, parentInfo)
-			await updateInfos(false)
-		} catch(e: unknown) {
-			setError(e)
-		} finally {
-			pendingCheckBoxes.value = { ...pendingCheckBoxes.peek(), childFusesBurned: false }
-		}
-	}
-
-	const buttonBurnChildOwnership = async () => {
-		try {
-			pendingCheckBoxes.value = { ...pendingCheckBoxes.peek(), childOwnershipBurned: true }
-			const acc = account.peek()
-			if (acc === undefined) throw new Error('missing account')
-			const childInfo = childDomainInfo.deepPeek()
-			if (childInfo === undefined) throw new Error('child info missing')
-			await transferChildOwnershipAway(acc, childInfo)
-			await updateInfos(false)
-		} catch (e: unknown) {
-			setError(e)
-		} finally {
-			pendingCheckBoxes.value = { ...pendingCheckBoxes.peek(), childOwnershipBurned: false }
-		}
-	}
-
-	const buttonCreateChild = async () => {
-		try {
-			pendingCheckBoxes.value = { ...pendingCheckBoxes.peek(), childExists: true }
-			const acc = account.peek()
-			if (acc === undefined) throw new Error('missing account')
-			const parent = parentDomainInfo.deepPeek()
-			if (parent === undefined) throw new Error('parent info missing')
-			const child = childDomainInfo.deepPeek()
-			if (child === undefined) throw new Error('child info missing')
-			await createSubDomain(acc, child, parent)
-			await updateInfos(false)
-		} catch(e: unknown) {
-			setError(e)
-		} finally {
-			pendingCheckBoxes.value = { ...pendingCheckBoxes.peek(), childExists: false }
-		}
-	}
-	const buttonSetContentHash = async() => {
-		try {
-			pendingCheckBoxes.value = { ...pendingCheckBoxes.peek(), childContentHashIsSet: true }
-			const acc = account.peek()
-			if (acc === undefined) throw new Error('missing account')
-			const child = childDomainInfo.deepPeek()
-			if (child === undefined) throw new Error('child info missing')
-			const hash = tryEncodeContentHash(contentHashInput.value)
-			if (hash === undefined) throw new Error('invalid content hash')
-			await setContentHash(acc, child, hash)
-			await updateInfos(false)
-		} catch(e: unknown) {
-			setError(e)
-		} finally {
-			pendingCheckBoxes.value = { ...pendingCheckBoxes.peek(), childContentHashIsSet: false }
-		}	
-	}
-	
 	return <main>
 		<div class = 'app'>
 			{ !isWindowEthereum.value ? <p class = 'paragraph'> An Ethereum enabled wallet is required to make immutable domains.</p> : <></> }
@@ -295,23 +166,22 @@ export function App() {
 
 			{ errorString.deepValue !== undefined ? <p style = 'color: #b43c42; word-break: break-all; white-space: break-spaces; border: 2px solid rgb(180, 60, 66); border-radius: 5px; padding: 10px;'> { errorString.value }</p> : <> </> }
 			
-			{ parentDomainInfo.deepValue === undefined || parentDomainInfo.deepValue?.registered ? <></>: <p style = 'color: #b43c42'>{ `The name ${ parentDomainInfo.deepValue.label } does not exist in the ENS registry. You need to register the domain to use PetalLock.` }</p> }
+			{ checkBoxes.deepValue === undefined || checkBoxes.deepValue[0] === undefined || checkBoxes.deepValue[0].exists ? <></>: <p style = 'color: #b43c42'>{ `The name ${ checkBoxes.deepValue[0].domainInfo.label } does not exist in the ENS registry. You need to register the domain to use PetalLock.` }</p> }
 			
-			{ checkBoxes.value === undefined || childDomainInfo.deepValue === undefined || childDomainInfo.value === undefined  || parentDomainInfo.value === undefined || !parentDomainInfo.deepValue?.registered ? <></> : <>
-				<p class = 'subdomain-header'>{ childDomainInfo.deepValue?.label } </p>
-				{ checkBoxes.deepValue?.immutable ? <p class = 'status-green'> {`IMMUTABLE until ${ new Date(Number(childDomainInfo.deepValue.expiry) * 1000).toISOString() }` } </p> : <p class = 'status-red'> NOT IMMUTABLE </p> }
-				{ checkBoxes.deepValue?.immutable ? <></> : <p class = 'requirement'> { childDomainInfo.deepValue?.label } should satisfy the following conditions to be immutable: </p> }
-				
-				<div class = 'grid-container'>
-					<WrapParent checkBoxes = { checkBoxes.value } parentDomainInfo = { parentDomainInfo.value } childDomainInfo = { childDomainInfo.value } account = { account } pendingCheckBoxes = { pendingCheckBoxes } button = { buttonWrapParent }/>
-					<CreateChild checkBoxes = { checkBoxes.value } parentDomainInfo = { parentDomainInfo.value } childDomainInfo = { childDomainInfo.value } account = { account } pendingCheckBoxes = { pendingCheckBoxes } button = { buttonCreateChild }/>
-					<WrapChild checkBoxes = { checkBoxes.value } parentDomainInfo = { parentDomainInfo.value } childDomainInfo = { childDomainInfo.value } account = { account } pendingCheckBoxes = { pendingCheckBoxes } button = { buttonWrapChild }/>
-					<SetContentHash contentHashInput = { contentHashInput } handleContentHashInput = { handleContentHashInput } checkBoxes = { checkBoxes.value } parentDomainInfo = { parentDomainInfo.value } childDomainInfo = { childDomainInfo.value } account = { account } pendingCheckBoxes = { pendingCheckBoxes } button = { buttonSetContentHash }/>
-					<BurnParentFuses checkBoxes = { checkBoxes.value } parentDomainInfo = { parentDomainInfo.value } childDomainInfo = { childDomainInfo.value } account = { account } pendingCheckBoxes = { pendingCheckBoxes } button = { buttonBurnParentFuses }/>
-					<BurnChildFuses checkBoxes = { checkBoxes.value } parentDomainInfo = { parentDomainInfo.value } childDomainInfo = { childDomainInfo.value } account = { account } pendingCheckBoxes = { pendingCheckBoxes } button = { buttonBurnChildFuses }/>
-					<BurnDomainOwnership checkBoxes = { checkBoxes.value } parentDomainInfo = { parentDomainInfo.value } childDomainInfo = { childDomainInfo.value } account = { account } pendingCheckBoxes = { pendingCheckBoxes } button = { buttonBurnChildOwnership }/>
-				</div>
-			</> }
+			{ checkBoxes.value !== undefined ? <Immutable checkBoxesArray = { checkBoxes.value } /> : <></> }
+
+			<Requirements checkBoxesArray = { checkBoxes }/>
+
+			<Create
+				contentHashInput = { contentHashInput }
+				loadingInfos = { loadingInfos }
+				immutable = { immutable }
+				handleContentHashInput= { handleContentHashInput }
+				account = { account }
+				checkBoxes = { checkBoxes }
+				updateInfos = { updateInfos }
+				creating = { creating }
+			/>
 		</div>
 		<div class = 'text-white/50 text-center'>
 			<div class = 'mt-8'>

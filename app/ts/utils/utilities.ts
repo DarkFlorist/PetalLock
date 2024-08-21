@@ -76,5 +76,17 @@ export function isSameAddress(address1: `0x${ string }` | undefined, address2: `
 
 export function getSubstringAfterFirstPoint(input: string): string {
 	const pointIndex = input.indexOf('.')
-return pointIndex === -1 ? input : input.substring(pointIndex + 1);
+	return pointIndex === -1 ? input : input.substring(pointIndex + 1);
+}
+
+export const splitEnsStringToSubdomainPath = (input: string): string[] => {
+	const parts = input.split('.')
+	const result: string[] = []
+
+	for (let i = 0; i < parts.length; i++) {
+		const joined = parts.slice(i).join('.')
+		result.push(joined)
+	}
+	result.pop() // eth element
+	return result.reverse()
 }
