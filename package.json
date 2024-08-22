@@ -16,7 +16,8 @@
 		"viem": "2.18.5"
 	},
 	"scripts": {
-		"setup": "npm ci --ignore-scripts && tsc && npm run vendor",
+		"setup": "npm ci --ignore-scripts && npm run contracts && npm run vendor && npm run build",
+		"contracts": "cd solidity && npm ci --ignore-scripts && npm run compile",
 		"build": "tsc",
 		"watch": "tsc --watch",
 		"serve": "npx http-server ./app",
