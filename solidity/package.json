@@ -2,17 +2,15 @@
 	"name": "petal-lock-contracts",
 	"version": "1.0.0",
 	"description": "",
-	"main": "index.js",
 	"scripts": {
-		"compile": "npx hardhat compile",
-		"test": "npx hardhat test",
-		"npx hardhat coverage": "npx hardhat coverage"
+		"compile": "tsc && node ./compile.js && node --input-type=module -e \"import { promises as fs } from 'fs'; await fs.rm('./compile.js')\""
 	},
 	"keywords": [],
 	"author": "",
 	"license": "ISC",
 	"devDependencies": {
-		"@nomicfoundation/hardhat-toolbox-viem": "3.0.0",
-		"hardhat": "2.22.8"
+		"@types/node": "20.10.6",
+		"typescript": "5.4.5",
+		"solc": "0.8.26"
 	}
 }

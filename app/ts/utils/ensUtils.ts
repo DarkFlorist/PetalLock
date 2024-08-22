@@ -187,12 +187,13 @@ export async function ensureProxyDeployerDeployed(account: AccountAddress): Prom
 }
 
 export function getPetalLockAddress() {
-	return getContractAddress({ bytecode: petalLockContractArtifact.bytecode, from: proxyDeployerAddress, opcode: 'CREATE2', salt: numberToBytes(0) })
+	const bytecode: `0x${ string }` = `0x${ petalLockContractArtifact.contracts['PetalLock.sol'].PetalLock.evm.bytecode.object }`
+	return getContractAddress({ bytecode, from: proxyDeployerAddress, opcode: 'CREATE2', salt: numberToBytes(0) })
 }
 
 export const isPetalLockDeployed = async (account: AccountAddress | undefined) => {
 	const wallet = createReadClient(account)
-	const expectedDeployedBytecode = petalLockContractArtifact.deployedBytecode
+	const expectedDeployedBytecode: `0x${ string }` = `0x${ petalLockContractArtifact.contracts['PetalLock.sol'].PetalLock.evm.deployedBytecode.object }`
 	const address = getPetalLockAddress()
 	const deployedBytecode = await wallet.getCode({ address })
 	return deployedBytecode === expectedDeployedBytecode
@@ -202,7 +203,8 @@ export const deployPetalLock = async (account: AccountAddress) => {
 	if (await isPetalLockDeployed(account)) throw new Error('already deployed')
 	await ensureProxyDeployerDeployed(account)
 	const client = createWriteClient(account)
-	const hash = await client.sendTransaction({ to: proxyDeployerAddress, data: petalLockContractArtifact.bytecode })
+	const bytecode: `0x${ string }` = `0x${ petalLockContractArtifact.contracts['PetalLock.sol'].PetalLock.evm.bytecode.object }`
+	const hash = await client.sendTransaction({ to: proxyDeployerAddress, data: bytecode })
 	return await client.waitForTransactionReceipt({ hash })
 }
 
