@@ -1,3 +1,4 @@
 /app/js/
 /app/vendor/
 node_modules/
+app/ts/VendoredPetalLock.ts

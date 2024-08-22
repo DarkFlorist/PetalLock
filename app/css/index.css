@@ -244,3 +244,12 @@ button:disabled, button[disabled] {
 	align-items: center;
 	gap: 10px;
 }
+
+.error-component {
+	color: #b43c42;
+	word-break: break-all;
+	white-space: break-spaces;
+	border: 2px solid rgb(180, 60, 66);
+	border-radius: 5px;
+	padding: 10px;
+}

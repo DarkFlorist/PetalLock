@@ -93,9 +93,10 @@ interface CreateProps {
 	checkBoxes: OptionalSignal<CheckBoxes>
 	updateInfos: (showLoading: boolean) => Promise<void>
 	creating: Signal<boolean>
+	petalLockDeployed: Signal<boolean | undefined>
 }
 
-export const Create = ( { contentHashInput, loadingInfos, immutable, handleContentHashInput, account, checkBoxes, updateInfos, creating }: CreateProps) => {
+export const Create = ( { contentHashInput, loadingInfos, immutable, handleContentHashInput, account, checkBoxes, updateInfos, creating, petalLockDeployed }: CreateProps) => {
 	if (checkBoxes.deepValue === undefined) return <></>
 	const subDomain = checkBoxes.deepValue[checkBoxes.deepValue.length -1]?.domainInfo.subDomain
 	if (subDomain === undefined) throw new Error('missing subdomain')
@@ -119,6 +120,7 @@ export const Create = ( { contentHashInput, loadingInfos, immutable, handleConte
 		if (acc === undefined) throw new Error('missing account')
 		await deployPetalLock(acc)
 		await updateInfos(false)
+		petalLockDeployed.value = true
 	}
 	
 	const signingAddress = computed(() => {
@@ -139,11 +141,16 @@ export const Create = ( { contentHashInput, loadingInfos, immutable, handleConte
 					onInput = { e => handleContentHashInput(e.currentTarget.value) }
 				/>
 			</div>
+			
+			{ petalLockDeployed.value === false ? <>
+				<p class = 'error-component' style = 'width: 100%; margin-left: 10px; text-align: center;'> PetalLock contract is not deployed. </p>
+				<button class = 'button is-primary' onClick = { deploy }> Deploy PetalLock contract</button>
+			</> : <></> }
+
 			<div style = 'padding: 10px;'>
 				<SwitchAddress requirementsMet = { loadingInfos.value || !immutable } account = { account } signingAddress = { signingAddress }/>
 			</div>
-			<button class = 'button is-primary' onClick = { deploy }> deploy </button>
-			<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { !isValidContentHashString(contentHashInput.value) || !isSameAddress(signingAddress.value, account.value) || checkBoxes.deepValue === undefined || loadingInfos.value || immutable.value || creating.value } onClick = { makeImmutable }> Make immutable { creating.value ? <Spinner/> : <></> }</button>
+			<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { petalLockDeployed.value !== true && !isValidContentHashString(contentHashInput.value) || !isSameAddress(signingAddress.value, account.value) || checkBoxes.deepValue === undefined || loadingInfos.value || immutable.value || creating.value } onClick = { makeImmutable }> Make immutable { creating.value ? <Spinner/> : <></> }</button>
 		</div>
 	</>
 }

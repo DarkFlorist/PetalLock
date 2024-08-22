@@ -1,6 +1,6 @@
 import { Signal, useSignal } from '@preact/signals'
 import { useEffect, useRef } from 'preact/hooks'
-import { requestAccounts, isValidEnsSubDomain, doWeNeedToBurnParentFuses, doWeNeedToBurnChildFuses, isChildOwnershipBurned, getAccounts, getDomainInfos } from '../utils/ensUtils.js'
+import { requestAccounts, isValidEnsSubDomain, doWeNeedToBurnParentFuses, doWeNeedToBurnChildFuses, isChildOwnershipBurned, getAccounts, getDomainInfos, isPetalLockDeployed } from '../utils/ensUtils.js'
 import { BigSpinner } from './Spinner.js'
 import { ensureError } from '../utils/utilities.js'
 import { isValidContentHashString } from '../utils/contenthash.js'
@@ -31,6 +31,7 @@ export function App() {
 	const errorString = useOptionalSignal<string>(undefined)
 	const loadingAccount = useSignal<boolean>(false)
 	const isWindowEthereum = useSignal<boolean>(true)
+	const petalLockDeployed = useSignal<boolean | undefined>(undefined)
 	const account = useSignal<AccountAddress | undefined>(undefined)
 	const pathInfo = useOptionalSignal<DomainInfo[]>(undefined)
 	const immutable = useSignal<boolean>(false)
@@ -129,6 +130,7 @@ export function App() {
 				setError(e)
 			} finally {
 				loadingAccount.value = false
+				petalLockDeployed.value = await isPetalLockDeployed(account.value)
 			}
 		}
 		fetchAccount()
@@ -164,7 +166,7 @@ export function App() {
 			
 			{ loadingInfos.value === true || loadingAccount.value ? <div style = 'max-width: fit-content; margin-inline: auto; padding: 20px;'> <BigSpinner/> </div> : <></> }
 
-			{ errorString.deepValue !== undefined ? <p style = 'color: #b43c42; word-break: break-all; white-space: break-spaces; border: 2px solid rgb(180, 60, 66); border-radius: 5px; padding: 10px;'> { errorString.value }</p> : <> </> }
+			{ errorString.deepValue !== undefined ? <p class = 'error-component'> { errorString.value }</p> : <> </> }
 			
 			{ checkBoxes.deepValue === undefined || checkBoxes.deepValue[0] === undefined || checkBoxes.deepValue[0].exists ? <></>: <p style = 'color: #b43c42'>{ `The name ${ checkBoxes.deepValue[0].domainInfo.label } does not exist in the ENS registry. You need to register the domain to use PetalLock.` }</p> }
 			
@@ -181,6 +183,7 @@ export function App() {
 				checkBoxes = { checkBoxes }
 				updateInfos = { updateInfos }
 				creating = { creating }
+				petalLockDeployed = { petalLockDeployed }
 			/>
 		</div>
 		<div class = 'text-white/50 text-center'>

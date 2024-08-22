@@ -7,6 +7,7 @@ const directoryOfThisFile = path.dirname(url.fileURLToPath(import.meta.url))
 const VENDOR_OUTPUT_PATH = path.join(directoryOfThisFile, '..', 'app', 'vendor')
 const MODULES_ROOT_PATH = path.join(directoryOfThisFile, '..', 'node_modules')
 const INDEX_HTML_PATH = path.join(directoryOfThisFile, '..', 'app', 'index.html')
+const PETALLOCK_CONTRACT_PATH = path.join(directoryOfThisFile, '..', 'app', 'ts', 'VendoredPetalLock.ts')
 
 type Dependency = { packageName: string, packageToVendor?: string, subfolderToVendor: string, mainEntrypointFile: string, alternateEntrypoints: Record<string, string> }
 const dependencyPaths: Dependency[] = [
@@ -57,6 +58,13 @@ async function vendorDependencies() {
 	await fs.writeFile(INDEX_HTML_PATH, newIndexHtml)
 }
 
+const copySolidityContractArtifact = async () => {
+	const contractLocation = path.join(directoryOfThisFile, '..', 'solidity/artifacts/contracts/PetalLock.sol/PetalLock.json')
+	const solidityContract = JSON.parse(await fs.readFile(contractLocation, 'utf8'))
+	const typescript = `export const petalLockContractArtifact = ${ JSON.stringify(solidityContract) } as const`
+	await fs.writeFile(PETALLOCK_CONTRACT_PATH, typescript)
+}
+
 // rewrite the source paths in sourcemap files so they show up in the debugger in a reasonable location and if two source maps refer to the same (relative) path, we end up with them distinguished in the browser debugger
 async function rewriteSourceMapSourcePath(packageName: string, sourcePath: string, destinationPath: string) {
 	const fileExtension = path.extname(sourcePath)
@@ -72,7 +80,12 @@ async function rewriteSourceMapSourcePath(packageName: string, sourcePath: strin
 	await fs.writeFile(destinationPath, JSON.stringify(fileContents))
 }
 
-vendorDependencies().catch(error => {
+const vendor = async () => {
+	await vendorDependencies()
+	await copySolidityContractArtifact()
+}
+
+vendor().catch(error => {
 	console.error(error)
 	debugger
 	process.exit(1)
