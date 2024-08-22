@@ -2,3 +2,4 @@
 /app/vendor/
 node_modules/
 app/ts/VendoredPetalLock.ts
+solidity/artifacts/PetalLock.json

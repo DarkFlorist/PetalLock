@@ -59,7 +59,7 @@ async function vendorDependencies() {
 }
 
 const copySolidityContractArtifact = async () => {
-	const contractLocation = path.join(directoryOfThisFile, '..', 'solidity/artifacts/contracts/PetalLock.sol/PetalLock.json')
+	const contractLocation = path.join(directoryOfThisFile, '..', 'solidity/artifacts/PetalLock.json')
 	const solidityContract = JSON.parse(await fs.readFile(contractLocation, 'utf8'))
 	const typescript = `export const petalLockContractArtifact = ${ JSON.stringify(solidityContract) } as const`
 	await fs.writeFile(PETALLOCK_CONTRACT_PATH, typescript)
