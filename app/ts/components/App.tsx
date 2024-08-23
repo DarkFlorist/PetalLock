@@ -106,7 +106,7 @@ export function App() {
 		if (contentHashTimeoutRef.current !== null) clearTimeout(contentHashTimeoutRef.current)
 		contentHashTimeoutRef.current = window.setTimeout(() => {
 			contentHashTimeoutRef.current = null
-			if (!isValidContentHashString(contentHashInput.value)) return setError('Not valid content hash')
+			if (!isValidContentHashString(contentHashInput.value)) return setError('The content hash is not valid')
 			setError(undefined)
 			updateInfos(false)
 		}, 500)

@@ -168,6 +168,4 @@ export const tryEncodeContentHash = (contentHash: string) => {
 	}
 }
 
-export const isValidContentHashString = (input: string) => {
-	return tryEncodeContentHash(input) != undefined
-}
+export const isValidContentHashString = (input: string) => tryEncodeContentHash(input) !== undefined

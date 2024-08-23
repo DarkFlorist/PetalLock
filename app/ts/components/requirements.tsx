@@ -125,22 +125,30 @@ export const Create = ( { contentHashInput, loadingInfos, immutable, handleConte
 	
 	const signingAddress = computed(() => {
 		if (checkBoxes.deepValue === undefined) return undefined
+		
 		return checkBoxes.deepValue[0]?.domainInfo.owner
 	})
+
+	const rightAddress = computed(() => isSameAddress(signingAddress.value, account.value))
+	const validContenthash = computed(() => isValidContentHashString(contentHashInput.value))
+
 	return <>
 		<div style = 'padding-top: 10px;'>
-			<div style = 'display: grid; grid-template-columns: min-content auto; width: 100%; padding: 10px; gap: 10px;'>
-				<p style = 'white-space: nowrap; margin: 0;'>{ `Content hash:` }</p>
-				<input 
-					style = 'height: fit-content;'
-					class = 'input'
-					type = 'text'
-					width = '100%'
-					placeholder = 'ipfs://bafy...'
-					value = { contentHashInput.value } 
-					onInput = { e => handleContentHashInput(e.currentTarget.value) }
-				/>
-			</div>
+			{ !immutable.value ? <div style = 'padding: 10px;'>
+				<p style = 'white-space: nowrap; margin: 0; font-size: 24px; padding-bottom: 10px'>{ `Set content hash and make the domain immutable!` }</p>
+				<div style = 'display: grid; grid-template-columns: min-content auto; width: 100%; gap: 10px;'>
+					<p style = 'white-space: nowrap; margin: 0;'>{ `Content hash:` }</p>
+					<input 
+						style = 'height: fit-content;'
+						class = 'input'
+						type = 'text'
+						width = '100%'
+						placeholder = 'ipfs://bafy...'
+						value = { contentHashInput.value } 
+						onInput = { e => handleContentHashInput(e.currentTarget.value) }
+					/>
+				</div>
+			</div> : <></> }
 			
 			{ petalLockDeployed.value === false ? <>
 				<p class = 'error-component' style = 'width: 100%; margin-left: 10px; text-align: center;'> PetalLock contract is not deployed. </p>
@@ -148,9 +156,9 @@ export const Create = ( { contentHashInput, loadingInfos, immutable, handleConte
 			</> : <></> }
 
 			<div style = 'padding: 10px;'>
-				<SwitchAddress requirementsMet = { loadingInfos.value || !immutable } account = { account } signingAddress = { signingAddress }/>
+				<SwitchAddress requirementsMet = { loadingInfos.value || !immutable.value } account = { account } signingAddress = { signingAddress }/>
 			</div>
-			<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { petalLockDeployed.value !== true && !isValidContentHashString(contentHashInput.value) || !isSameAddress(signingAddress.value, account.value) || checkBoxes.deepValue === undefined || loadingInfos.value || immutable.value || creating.value } onClick = { makeImmutable }> Make immutable { creating.value ? <Spinner/> : <></> }</button>
+			<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { petalLockDeployed.value !== true || !validContenthash.value || !rightAddress.value || checkBoxes.deepValue === undefined || loadingInfos.value || immutable.value || creating.value } onClick = { makeImmutable }> Make immutable { creating.value ? <Spinner/> : <></> }</button>
 		</div>
 	</>
 }
