@@ -166,7 +166,7 @@ export const doWeNeedToBurnChildFuses = (childInfo: DomainInfo) => {
 
 export const isValidEnsSubDomain = (subdomain: string): boolean => {
 	// Regex to validate the ENS subdomain with infinite subdomains support
-	const ensRegex = /^(?!-)([a-zA-Z0-9-]+\.)*(?!-)[a-zA-Z0-9-]+(?<!-)\.eth$/
+	const ensRegex = /^(?!-)([a-zA-Z0-9-]+\.)+[a-zA-Z0-9-]+(?<!-)\.eth$/
 	return ensRegex.test(subdomain)
 }
 

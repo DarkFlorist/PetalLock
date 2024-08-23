@@ -3,7 +3,6 @@ import { useEffect, useRef } from 'preact/hooks'
 import { requestAccounts, isValidEnsSubDomain, doWeNeedToBurnParentFuses, doWeNeedToBurnChildFuses, isChildOwnershipBurned, getAccounts, getDomainInfos, isPetalLockDeployed } from '../utils/ensUtils.js'
 import { BigSpinner } from './Spinner.js'
 import { ensureError } from '../utils/utilities.js'
-import { isValidContentHashString } from '../utils/contenthash.js'
 import { AccountAddress, CheckBoxes, DomainInfo, FinalChildChecks, ParentChecks } from '../types/types.js'
 import { Create, Immutable, Requirements } from './requirements.js'
 import { useOptionalSignal } from './PreactUtils.js'
@@ -39,7 +38,6 @@ export function App() {
 	const loadingInfos = useSignal<boolean>(false)
 	const creating = useSignal<boolean>(false)
 	const inputTimeoutRef = useRef<number | null>(null)
-	const contentHashTimeoutRef = useRef<number | null>(null)
 
 	const setError = (error: unknown) => {
 		if (error === undefined) {
@@ -95,7 +93,7 @@ export function App() {
 		inputTimeoutRef.current = window.setTimeout(() => {
 			inputTimeoutRef.current = null
 			const ensSubDomain = inputValue.value.toLowerCase()
-			if (!isValidEnsSubDomain(ensSubDomain)) return setError(`${ ensSubDomain } is not a valid ENS subdomain. The format should be similar to "2.horswap.eth" or "1.lunaria.darkflorist.eth"`)
+			if (!isValidEnsSubDomain(ensSubDomain)) return setError(`${ ensSubDomain } is not a valid ENS subdomain. The format should be similar to "2.horswap.eth" or "1.lunaria.darkflorist.eth."`)
 			setError(undefined)
 			updateInfos(true)
 		}, 500)
@@ -103,13 +101,6 @@ export function App() {
 
 	function handleContentHashInput(value: string) {
 		contentHashInput.value = value
-		if (contentHashTimeoutRef.current !== null) clearTimeout(contentHashTimeoutRef.current)
-		contentHashTimeoutRef.current = window.setTimeout(() => {
-			contentHashTimeoutRef.current = null
-			if (!isValidContentHashString(contentHashInput.value)) return setError('The content hash is not valid')
-			setError(undefined)
-			updateInfos(false)
-		}, 500)
 	}
 
 	useEffect(() => {
