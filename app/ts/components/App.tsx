@@ -49,6 +49,13 @@ export function App() {
 		errorString.deepValue = ensured.message
 	}
 
+	const clear = () => {
+		pathInfo.value = undefined
+		loadingInfos.value = false
+		checkBoxes.value = undefined
+		immutable.value = false
+	}
+
 	const updateInfos = async (showLoading: boolean) => {
 		try {
 			const ensSubDomain = inputValue.value.toLowerCase()
@@ -93,7 +100,10 @@ export function App() {
 		inputTimeoutRef.current = window.setTimeout(() => {
 			inputTimeoutRef.current = null
 			const ensSubDomain = inputValue.value.toLowerCase()
-			if (!isValidEnsSubDomain(ensSubDomain)) return setError(`${ ensSubDomain } is not a valid ENS subdomain. The format should be similar to "2.horswap.eth" or "1.lunaria.darkflorist.eth."`)
+			if (!isValidEnsSubDomain(ensSubDomain)) {
+				clear()
+				return setError(`${ ensSubDomain } is not a valid ENS subdomain. The format should be similar to "2.horswap.eth" or "1.lunaria.darkflorist.eth."`)
+			}
 			setError(undefined)
 			updateInfos(true)
 		}, 500)

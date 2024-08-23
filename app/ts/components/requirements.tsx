@@ -134,14 +134,19 @@ export const Create = ( { contentHashInput, loadingInfos, immutable, handleConte
 	const wrappedIssues = computed(() => {
 		const nonWrappedTokens = checkBoxes.deepValue?.filter((x) => x.exists && !x.isWrapped)
 		if (nonWrappedTokens === undefined || nonWrappedTokens.length === 0) return undefined
-		return ` - The domain${ nonWrappedTokens.length > 1 ? 's' : '' }: ${ nonWrappedTokens.map((token) => `"${ token.domainInfo.subDomain }"`).join(', ')} need to be wrapped for PetalLock to function.`
+		return ` - The domain${ nonWrappedTokens.length > 1 ? 's' : '' }: ${ nonWrappedTokens.map((token) => `"${ token.domainInfo.subDomain }"`).join(', ')} need to be wrapped for PetalLock to function`
 	})
 	const ownershipIssues = computed(() => {
 		const managerAndOwners = checkBoxes.deepValue?.filter((x) => x.exists && x.isWrapped).map((x) => [x.domainInfo.owner, x.domainInfo.manager])
 		if (managerAndOwners === undefined || managerAndOwners.length === 0) return undefined
 		const unique = Array.from(new Set(managerAndOwners.flat().flat().filter((address) => address !== ENS_TOKEN_WRAPPER)))
 		if (unique.length <= 1) return undefined
-		return ` - The domain${ unique.length > 1 ? 's' : '' } need to be owned and managed by the same address. Currently they are managed by addresses: ${ unique.join(', ') }.`
+		return ` - The domain${ unique.length > 1 ? 's' : '' } need to be owned and managed by the same address. Currently they are managed by addresses: ${ unique.join(', ') }`
+	})
+	const domainExistIssue = computed(() => {
+		const first = checkBoxes.deepValue ? checkBoxes.deepValue[0] : undefined
+		if (first === undefined || first.exists) return undefined
+		return ` - The domain ${ first.domainInfo.subDomain } need to be created before you can use PetalLock to create immutable subdomains under it`
 	})
 
 	return <>
@@ -168,6 +173,7 @@ export const Create = ( { contentHashInput, loadingInfos, immutable, handleConte
 			</> : <></> }
 			{ immutable.value ? <></> : <>
 				<div style = 'padding: 10px; display: block;'>
+					{ domainExistIssue.value === undefined ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { domainExistIssue.value } </p>}
 					<SwitchAddress requirementsMet = { loadingInfos.value } account = { account } signingAddress = { signingAddress }/>
 					{ validContenthash.value ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ` - Set a valid content hash` } </p>}
 					{ wrappedIssues.value === undefined ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { wrappedIssues.value } </p>}
