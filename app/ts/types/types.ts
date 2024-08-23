@@ -15,7 +15,7 @@ export type DomainInfo = {
 	manager: `0x${ string }`,
 }
 
-export type FinalChildChecks =  {
+export type FinalChildChecks = {
 	type: 'finalChild',
 	exists: boolean,
 	isWrapped: boolean,
@@ -26,7 +26,7 @@ export type FinalChildChecks =  {
 	domainInfo: DomainInfo,
 }
 
-export type ParentChecks =  {
+export type ParentChecks = {
 	type: 'parent',
 	exists: boolean,
 	isWrapped: boolean,
@@ -37,16 +37,16 @@ export type ParentChecks =  {
 export type CheckBoxes = readonly (FinalChildChecks | ParentChecks)[]
 
 export type EnsFuseName = 
-  | 'Cannot Unwrap Name'
-  | 'Cannot Burn Fuses'
-  | 'Cannot Transfer'
-  | 'Cannot Set Resolver'
-  | 'Cannot Set Time To Live'
-  | 'Cannot Create Subdomain'
-  | 'Parent Domain Cannot Control'
-  | 'Cannot Approve'
-  | 'Is .eth domain'
-  | 'Can Extend Expiry'
-  | 'Can Do Everything'
+	| 'Cannot Unwrap Name'
+	| 'Cannot Burn Fuses'
+	| 'Cannot Transfer'
+	| 'Cannot Set Resolver'
+	| 'Cannot Set Time To Live'
+	| 'Cannot Create Subdomain'
+	| 'Parent Domain Cannot Control'
+	| 'Cannot Approve'
+	| 'Is .eth domain'
+	| 'Can Extend Expiry'
+	| 'Can Do Everything'
 
 export type AccountAddress = `0x${ string }`

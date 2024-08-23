@@ -26,7 +26,7 @@ export const nameToCode = {
 	skynet: 0xb19910,
 	arweave: 0xb29910,
 } as const;
-  
+
 type CodecId = keyof typeof codeToName
 
 const hexStringToBytes = (hex: string): Uint8Array => {

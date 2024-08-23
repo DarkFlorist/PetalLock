@@ -214,14 +214,14 @@ export const callPetalLock = async (account: AccountAddress, domainInfos: Domain
 	const subdomainRouteNames = domainInfos.map((x) => x.subDomain)
 	const labels = subdomainRouteNames.map((p) => {
 		const [label] = p.split('.')
-		if (label === undefined) throw new Error('not valid')
+		if (label === undefined) throw new Error('Not a valid ENS sub domain')
 		return label
 	})
 	const subdomainRouteNodes = subdomainRouteNames.map((pathPart) => namehash(pathPart))
 	const contenthash = tryEncodeContentHash(contentHash)
-	if (contenthash === undefined) throw new Error('content hash')
+	if (contenthash === undefined) throw new Error('Unable to decode content hash')
 
-	if (subdomainRouteNodes[0] === undefined) throw new Error('not exist')
+	if (subdomainRouteNodes[0] === undefined) throw new Error('Not a valid ENS sub domain')
 	const ownedTokens = domainInfos.filter((info) => info.registered).map((info) => BigInt(info.nameHash))
 	const data = encodeAbiParameters([
 		{ name: 'labels', type: 'string[]' },
