@@ -1,27 +1,4 @@
 
-export type CheckBoxes = {
-	childExists: boolean
-	parentWrapped: boolean
-	childWrapped: boolean
-	parentFusesBurned: boolean
-	childFusesBurned: boolean
-	childOwnershipBurned: boolean
-	immutable: boolean
-	childContentHashIsSet: boolean
-}
-
-export type EnsFuseName = 
-  | 'Cannot Unwrap Name'
-  | 'Cannot Burn Fuses'
-  | 'Cannot Transfer'
-  | 'Cannot Set Resolver'
-  | 'Cannot Set Time To Live'
-  | 'Cannot Create Subdomain'
-  | 'Parent Domain Cannot Control'
-  | 'Cannot Approve'
-  | 'Is .eth domain'
-  | 'Can Extend Expiry'
-  | 'Can Do Everything'
 
 export type DomainInfo = {
 	isWrapped: boolean,
@@ -32,9 +9,44 @@ export type DomainInfo = {
 	fuses: readonly EnsFuseName[],
 	expiry: bigint,
 	label: string,
+	subDomain: string,
 	registered: boolean,
 	contentHash: `0x${ string }`,
 	manager: `0x${ string }`,
 }
+
+export type FinalChildChecks = {
+	type: 'finalChild',
+	exists: boolean,
+	isWrapped: boolean,
+	fusesBurned: boolean,
+	ownershipBurned: boolean,
+	immutable: boolean,
+	contentHashIsSet: boolean,
+	domainInfo: DomainInfo,
+}
+
+export type ParentChecks = {
+	type: 'parent',
+	exists: boolean,
+	isWrapped: boolean,
+	fusesBurned: boolean,
+	domainInfo: DomainInfo,
+}
+
+export type CheckBoxes = readonly (FinalChildChecks | ParentChecks)[]
+
+export type EnsFuseName = 
+	| 'Cannot Unwrap Name'
+	| 'Cannot Burn Fuses'
+	| 'Cannot Transfer'
+	| 'Cannot Set Resolver'
+	| 'Cannot Set Time To Live'
+	| 'Cannot Create Subdomain'
+	| 'Parent Domain Cannot Control'
+	| 'Cannot Approve'
+	| 'Is .eth domain'
+	| 'Can Extend Expiry'
+	| 'Can Do Everything'
 
 export type AccountAddress = `0x${ string }`

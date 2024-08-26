@@ -55,7 +55,13 @@ svg.spinner > circle {
 
 .grid-container {
 	display: grid;
-	grid-template-columns: auto auto;
+	grid-template-columns: auto;
+	padding: 10px;
+}
+
+.grid-container-bordered {
+	display: grid;
+	grid-template-columns: auto;
 	border: 2px solid #ccc;
 	border-radius: 25px;
 	padding: 10px;
@@ -64,7 +70,6 @@ svg.spinner > circle {
 .grid-item {
 	display: flex;
 	flex-direction: column;
-	margin-bottom: 20px;
 	text-align: left;
 }
 
@@ -74,8 +79,8 @@ svg.spinner > circle {
 
 body {
 	min-height: 100vh;
-    display: grid;
-    place-content: center;
+	display: grid;
+	place-content: center;
 	background: linear-gradient(to right,#4fabd6, #a36bdb);
 	background-blend-mode: screen;
 	margin: 0px;
@@ -116,6 +121,7 @@ body {
 }
 
 .subdomain-header {
+	margin: 5px;
 	font-size: 24px;
 	text-align: center;
 	text-wrap: balance;
@@ -175,7 +181,7 @@ a {
 	text-align: center;
 	cursor: pointer;
 	box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
-	width: 200px;
+	width: 100%;
 	border: 2px solid #ccc;
 }
 button:disabled, button[disabled] {
@@ -234,8 +240,16 @@ button:disabled, button[disabled] {
 
 .form-control {
 	display: grid;
-    grid-template-columns: min-content min-content auto;
-    padding: 10px;
+	grid-template-columns: min-content max-content auto;
 	align-items: center;
 	gap: 10px;
+}
+
+.error-component {
+	color: #b43c42;
+	word-break: break-all;
+	white-space: break-spaces;
+	border: 2px solid rgb(180, 60, 66);
+	border-radius: 5px;
+	padding: 10px;
 }

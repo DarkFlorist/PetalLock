@@ -1,230 +1,163 @@
-import { Signal } from '@preact/signals'
-import { AccountAddress, CheckBoxes, DomainInfo } from '../types/types.js'
-import { isSameAddress } from '../utils/utilities.js'
-import { childFusesToBurn, getRightSigningAddress, parentFuseToBurn } from '../utils/ensUtils.js'
-import { Spinner } from './Spinner.js'
-import { isValidContentHashString, tryDecodeContentHash } from '../utils/contenthash.js'
+import { computed, Signal } from '@preact/signals'
+import { AccountAddress, CheckBoxes, FinalChildChecks, ParentChecks } from '../types/types.js'
 import { burnAddresses } from '../utils/constants.js'
+import { callPetalLock, childFusesToBurn, deployPetalLock, parentFuseToBurn } from '../utils/ensUtils.js'
+import { isSameAddress } from '../utils/utilities.js'
+import { OptionalSignal } from './PreactUtils.js'
+import { isValidContentHashString } from '../utils/contenthash.js'
+import { Spinner } from './Spinner.js'
 
 interface SwitchAddressProps {
 	account: Signal<AccountAddress | undefined>
-	signingAddress: AccountAddress
+	signingAddress: Signal<AccountAddress| undefined>
 	requirementsMet: boolean
 }
 
-const SwitchAddress = ({ signingAddress, account, requirementsMet }: SwitchAddressProps) => {
+export const SwitchAddress = ({ signingAddress, account, requirementsMet }: SwitchAddressProps) => {
 	if (requirementsMet) return <></>
-	if (burnAddresses.map((b) => BigInt(b)).includes(BigInt(signingAddress))) return <></>
-	if (isSameAddress(account.value, signingAddress) ) return <></>
+	if (signingAddress.value === undefined) return <></>
+	if (burnAddresses.map((b) => BigInt(b)).includes(BigInt(signingAddress.value))) return <></>
+	if (isSameAddress(account.value, signingAddress.value) ) return <></>
 	return <p class = 'paragraph' style = 'color: #b43c42'> { `Switch to ${ signingAddress } to sign` } </p>
 }
 
+export const Requirements = ( { checkBoxesArray } : { checkBoxesArray: OptionalSignal<CheckBoxes> }) => {
+	if (checkBoxesArray.deepValue === undefined) return <></>
+	return <div class = 'grid-container-bordered'> { [...checkBoxesArray.deepValue].reverse().map((check) => {
+		if (check.type === 'parent') return <ParentRequirements checkBoxes = { check }/>
+		return <ChildRequirements checkBoxes = { check }/>
+	}) } </div>
+}
 
 interface RequirementProps {
-	checkBoxes: Signal<CheckBoxes>
-	pendingCheckBoxes: Signal<CheckBoxes>
-	parentDomainInfo: Signal<DomainInfo>
-	childDomainInfo: Signal<DomainInfo> 
-	account: Signal<AccountAddress | undefined>
-	button: () => void
+	primarytext: string,
+	secondaryText?: string,
+	checked: boolean,
 }
 
-export const WrapParent = ({ checkBoxes, parentDomainInfo, childDomainInfo, account, pendingCheckBoxes, button }: RequirementProps) => {
-	const pending = pendingCheckBoxes.value.parentWrapped
-	const correctSigningAddress = getRightSigningAddress('wrapParent', childDomainInfo.value, parentDomainInfo.value)
-	const requirementsMet = checkBoxes.value.parentWrapped
-	const buttonDisabled = account.value === undefined || !isSameAddress(account.value, correctSigningAddress) || requirementsMet || pending
-
+export const Requirement = ({ checked, primarytext, secondaryText }: RequirementProps) => {
 	return <>
 		<div class = 'grid-item' style = 'justify-self: start'>
 			<div style = 'display: grid; grid-template-rows: auto auto;'>
 				<label class = 'form-control'>
-					<p class = 'paragraph requirement'> 1) </p>
-					<input type = 'checkbox' name = 'switch' class = 'check' checked = { requirementsMet } disabled = { true }/>
-					<p class = 'paragraph checkbox-text requirement'> { parentDomainInfo.value.label } is wrapped </p>
+					<input type = 'checkbox' name = 'switch' class = 'check' checked = { checked } disabled = { true }/>
+					<p class = 'paragraph checkbox-text requirement'> { primarytext } </p>
 				</label>
-				<SwitchAddress requirementsMet = { requirementsMet } account = { account } signingAddress = { correctSigningAddress }/>
+				{ secondaryText === undefined ? <></> : <p class = 'paragraph dim' style = 'padding-left: 10px;'> { secondaryText } </p> }
 			</div>
-		</div>
-		<div class = 'grid-item' style = 'justify-self: end; justify-content: center;'>
-			<button class = 'button is-primary' { ...buttonDisabled ? { disabled: true } : {} } onClick = { button }>
-				Wrap { pending ? <Spinner/> : <></> }
-			</button>
 		</div>
 	</>
 }
 
-export const CreateChild = ({ checkBoxes, parentDomainInfo, childDomainInfo, account, pendingCheckBoxes, button }: RequirementProps) => {
-	const pending = pendingCheckBoxes.value.childExists
-	const correctSigningAddress = getRightSigningAddress('createChild', childDomainInfo.value, parentDomainInfo.value)
-	const requirementsMet = checkBoxes.value.childExists
-	const buttonDisabled = account.value === undefined || !isSameAddress(account.value, correctSigningAddress) || requirementsMet || pending
+export const Immutable = ( { checkBoxesArray } : { checkBoxesArray: Signal<CheckBoxes> }) => {
+	const checkBoxes = checkBoxesArray.value[checkBoxesArray.value.length - 1]
+	if (checkBoxes === undefined || checkBoxes.type !== 'finalChild') return <></>
+	return <div>
+		<div style = 'padding-top: 30px; padding-bottom: 30px; align-items: center; display: grid; width: 100%'>
+			{ checkBoxes.immutable ? <p class = 'status-green'> {`IMMUTABLE until ${ new Date(Number(checkBoxes.domainInfo.expiry) * 1000).toISOString() }` } </p> : <p class = 'status-red'> NOT IMMUTABLE </p> }
+		</div>
+		{ checkBoxes.immutable ? <></> : <p style = 'margin: 0px; margin-bottom: 10px; padding-left: 10px;' class = 'requirement'> { checkBoxes.domainInfo.subDomain } should satisfy the following conditions to be immutable: </p> }
+	</div>
+}
+
+export const ChildRequirements = ( { checkBoxes } : { checkBoxes: FinalChildChecks }) => {
 	return <>
-		<div class = 'grid-item' style = 'justify-self: start'>
-			<div style = 'display: grid; grid-template-rows: auto auto;'>
-				<label class = 'form-control'>
-					<p class = 'paragraph requirement'> 2) </p>
-					<input type = 'checkbox' name = 'switch' class = 'check' checked = { requirementsMet } disabled = { true }/>
-					<p class = 'paragraph checkbox-text requirement'> { childDomainInfo.value.label } exists </p>
-				</label>
-				<SwitchAddress requirementsMet = { requirementsMet } account = { account } signingAddress = { correctSigningAddress }/>
-			</div>
-		</div>
-		<div class = 'grid-item' style = 'justify-self: end; justify-content: center;'>
-			<button class = 'button is-primary' { ...buttonDisabled ? { disabled: true } : {} } onClick = { button }>
-				Create Subdomain and burn subodmain fuses { pending ? <Spinner/> : <></> }
-			</button>
+		<p class = 'subdomain-header'>{ checkBoxes.domainInfo.subDomain } </p>
+		<div class = 'grid-container'>
+			<Requirement checked = { checkBoxes.exists } primarytext = { `${ checkBoxes.domainInfo.subDomain } exists` } />
+			<Requirement checked = { checkBoxes.isWrapped } primarytext = { `${ checkBoxes.domainInfo.subDomain } is wrapped` } />
+			<Requirement checked = { checkBoxes.fusesBurned } primarytext = { `${ checkBoxes.domainInfo.subDomain } fuses are burnt` } secondaryText = { `The fuses ${ childFusesToBurn.map((n) => `"${ n }"`).join(', ') } are burnt` } />
+			<Requirement checked = { checkBoxes.ownershipBurned } primarytext = { `${ checkBoxes.domainInfo.subDomain } ownership is burnt` } secondaryText = 'The ownership of subdomain is moved to an address controlled by nobody'/>
+			<Requirement checked = { checkBoxes.contentHashIsSet } primarytext = { 'Content hash is set'} secondaryText = 'Content hash should be set for the domain to be useful'/>
 		</div>
 	</>
 }
 
-export const WrapChild = ({ checkBoxes, parentDomainInfo, childDomainInfo, account, pendingCheckBoxes, button }: RequirementProps) => {
-	const pending = pendingCheckBoxes.value.childWrapped
-	const correctSigningAddress = getRightSigningAddress('wrapChild', childDomainInfo.value, parentDomainInfo.value)
-	const requirementsMet = checkBoxes.value.childWrapped
-	const buttonDisabled = account.value === undefined || !isSameAddress(account.value, correctSigningAddress) || requirementsMet || pending
+export const ParentRequirements = ( { checkBoxes } : { checkBoxes: ParentChecks }) => {
 	return <>
-		<div class = 'grid-item' style = 'justify-self: start'>
-			<div style = 'display: grid; grid-template-rows: auto auto;'>
-				<label class = 'form-control'>
-					<p class = 'paragraph requirement'> 3) </p>
-					<input type = 'checkbox' name = 'switch' class = 'check' checked = { requirementsMet } disabled = { true }/>
-					<p class = 'paragraph checkbox-text requirement'> { childDomainInfo.value.label } is wrapped </p>
-				</label>
-				<p class = 'paragraph dim'> { `Requires approve all from the owner (asked if needed)` } </p>
-				<SwitchAddress requirementsMet = { requirementsMet } account = { account } signingAddress = { correctSigningAddress }/>
-			</div>
-		</div>
-		<div class = 'grid-item' style = 'justify-self: end; justify-content: center;'>
-			<button class = 'button is-primary' { ...buttonDisabled ? { disabled: true } : {} } onClick = { button }>
-				Wrap { pending ? <Spinner/> : <></> }
-			</button>
+	<p class = 'subdomain-header'>{ checkBoxes.domainInfo.subDomain } </p>
+		<div class = 'grid-container'>
+			<Requirement checked = { checkBoxes.exists } primarytext = { `${ checkBoxes.domainInfo.subDomain } exists` } />
+			<Requirement checked = { checkBoxes.isWrapped } primarytext = { `${ checkBoxes.domainInfo.subDomain } is wrapped` } />
+			<Requirement checked = { checkBoxes.fusesBurned } primarytext = { `${ checkBoxes.domainInfo.subDomain } fuses are burnt` } secondaryText = { `The fuse "${ parentFuseToBurn }" is burnt` } />
 		</div>
 	</>
 }
 
-interface SetContentHashProps {
-	checkBoxes: Signal<CheckBoxes>
-	pendingCheckBoxes: Signal<CheckBoxes>
-	parentDomainInfo: Signal<DomainInfo>
-	childDomainInfo: Signal<DomainInfo> 
-	account: Signal<AccountAddress | undefined>
-	button: () => void
+interface CreateProps {
 	contentHashInput: Signal<string>
+	loadingInfos: Signal<boolean>
+	immutable: Signal<boolean>
 	handleContentHashInput: (input: string) => void
+	account: Signal<AccountAddress | undefined>
+	checkBoxes: OptionalSignal<CheckBoxes>
+	updateInfos: (showLoading: boolean) => Promise<void>
+	creating: Signal<boolean>
+	petalLockDeployed: Signal<boolean | undefined>
 }
 
-export const SetContentHash = ({ checkBoxes, parentDomainInfo, childDomainInfo, account, pendingCheckBoxes, button, contentHashInput, handleContentHashInput }: SetContentHashProps) => {
-	const pending = pendingCheckBoxes.value.childContentHashIsSet
-	const correctSigningAddress = getRightSigningAddress('setContentHash', childDomainInfo.value, parentDomainInfo.value)
-	const requirementsMet = checkBoxes.value.childContentHashIsSet
-	const buttonDisabled = account.value === undefined || !isSameAddress(account.value, correctSigningAddress) || requirementsMet || pending || !isValidContentHashString(contentHashInput.value)
+export const Create = ( { contentHashInput, loadingInfos, immutable, handleContentHashInput, account, checkBoxes, updateInfos, creating, petalLockDeployed }: CreateProps) => {
+	if (checkBoxes.deepValue === undefined) return <></>
+	const subDomain = checkBoxes.deepValue[checkBoxes.deepValue.length -1]?.domainInfo.subDomain
+	if (subDomain === undefined) throw new Error('missing subdomain')
+	const makeImmutable = async () => {
+		const acc = account.peek()
+		if (acc === undefined) throw new Error('missing account')
+		if (checkBoxes.deepValue === undefined) return
+		try {
+			creating.value = true
+			await callPetalLock(acc, checkBoxes.deepValue.map((value) => value.domainInfo), contentHashInput.value)
+			await updateInfos(false)
+		} catch(e) {
+			throw e
+		} finally {
+			creating.value = false
+		}
+	}
+	const deploy = async () => {
+		const acc = account.peek()
+		if (acc === undefined) throw new Error('missing account')
+		await deployPetalLock(acc)
+		await updateInfos(false)
+		petalLockDeployed.value = true
+	}
 	
+	const signingAddress = computed(() => {
+		if (checkBoxes.deepValue === undefined) return undefined
+		
+		return checkBoxes.deepValue[0]?.domainInfo.owner
+	})
+
+	const rightAddress = computed(() => isSameAddress(signingAddress.value, account.value))
+	const validContenthash = computed(() => isValidContentHashString(contentHashInput.value))
+
 	return <>
-		<div class = 'grid-item' style = 'justify-self: start; width: 100%;'>
-			<div style = 'display: grid; grid-template-rows: auto auto; width: 100%;'>
-				<label class = 'form-control'>
-					<p class = 'paragraph requirement'> 4) </p>
-					<input type = 'checkbox' name = 'switch' class = 'check' checked = { requirementsMet } disabled = { true }/>
-					<p class = 'paragraph checkbox-text requirement'> Content hash is set </p>
-				</label>
-				{ tryDecodeContentHash(childDomainInfo.value.contentHash) !== undefined ? <p class = 'paragraph dim'> Current content hash: { tryDecodeContentHash(childDomainInfo.value.contentHash) }.</p> : <>
-					<p class = 'paragraph dim'> The content hash needs to be set for the domain to be useful.` </p>
+		<div style = 'padding-top: 10px;'>
+			{ !immutable.value ? <div style = 'padding: 10px;'>
+				<p style = 'white-space: nowrap; margin: 0; font-size: 24px; padding-bottom: 10px'>{ `Set content hash and make the domain immutable!` }</p>
+				<div style = 'display: grid; grid-template-columns: min-content auto; width: 100%; gap: 10px;'>
+					<p style = 'white-space: nowrap; margin: 0;'>{ `Content hash:` }</p>
 					<input 
-						class = 'input' 
-						type = 'text' 
+						style = 'height: fit-content;'
+						class = 'input'
+						type = 'text'
 						width = '100%'
-						placeholder = 'ipfs://bafy...' 
-						disabled = { checkBoxes.value?.childContentHashIsSet === true }
+						placeholder = 'ipfs://bafy...'
 						value = { contentHashInput.value } 
 						onInput = { e => handleContentHashInput(e.currentTarget.value) }
 					/>
-				<SwitchAddress requirementsMet = { requirementsMet } account = { account } signingAddress = { correctSigningAddress }/>
-				</> }
-			</div>
-		</div>
-		<div class = 'grid-item' style = 'justify-self: end; justify-content: center;'>
-			<button class = 'button is-primary' { ...buttonDisabled ? { disabled: true } : {} } onClick = { button }>
-				Set content hash { pending ? <Spinner/> : <></> }
-			</button>
-		</div>
-	</>
-}
+				</div>
+			</div> : <></> }
+			
+			{ petalLockDeployed.value === false ? <>
+				<p class = 'error-component' style = 'width: 100%; margin-left: 10px; text-align: center;'> PetalLock contract is not deployed. </p>
+				<button class = 'button is-primary' onClick = { deploy }> Deploy PetalLock contract</button>
+			</> : <></> }
 
-export const BurnParentFuses = ({ checkBoxes, parentDomainInfo, childDomainInfo, account, pendingCheckBoxes, button }: RequirementProps) => {
-	const pending = pendingCheckBoxes.value?.parentFusesBurned
-	const correctSigningAddress = getRightSigningAddress('parentFuses', childDomainInfo.value, parentDomainInfo.value)
-	const requirementsMet = checkBoxes.value?.parentFusesBurned
-	const buttonDisabled = account.value === undefined || !isSameAddress(account.value, correctSigningAddress) || requirementsMet || pending
-	
-	return <>
-		<div class = 'grid-item' style = 'justify-self: start'>
-			<div style = 'display: grid; grid-template-rows: auto auto;'>
-				<label class = 'form-control'>
-					<p class = 'paragraph requirement'> 5) </p>
-					<input type = 'checkbox' name = 'switch' class = 'check' checked = { requirementsMet } disabled = { true }/>
-					<p class = 'paragraph checkbox-text requirement'> { parentDomainInfo.value.label } fuses are burnt </p>
-				</label>
-				<p class = 'paragraph dim'> { `The fuse "${ parentFuseToBurn }" is burnt` } </p>
-				<SwitchAddress requirementsMet = { requirementsMet } account = { account } signingAddress = { correctSigningAddress }/>
+			<div style = 'padding: 10px;'>
+				<SwitchAddress requirementsMet = { loadingInfos.value || !immutable.value } account = { account } signingAddress = { signingAddress }/>
 			</div>
-		</div>
-		<div class = 'grid-item' style = 'justify-self: end; justify-content: center;'>
-			<button class = 'button is-primary' { ...buttonDisabled ? { disabled: true } : {} } onClick = { button }>
-				Burn fuses { pending ? <Spinner/> : <></> }
-			</button>
-		</div>
-	</>
-}
-
-export const BurnChildFuses = ({ checkBoxes, parentDomainInfo, childDomainInfo, account, pendingCheckBoxes, button }: RequirementProps) => {
-	const pending = pendingCheckBoxes.value?.childFusesBurned
-	const correctSigningAddress = getRightSigningAddress('childFuses', childDomainInfo.value, parentDomainInfo.value)
-	const requirementsMet = checkBoxes.value?.childFusesBurned
-	const buttonDisabled = account.value === undefined || !isSameAddress(account.value, correctSigningAddress) || requirementsMet || pending
-	
-	return <>
-		<div class = 'grid-item' style = 'justify-self: start'>
-			<div style = 'display: grid; grid-template-rows: auto auto;'>
-				<label class = 'form-control'>
-					<p class = 'paragraph requirement'> 6) </p>
-					<input type = 'checkbox' name = 'switch' class = 'check' checked = { requirementsMet === true } disabled = { true }/>
-					<p class = 'paragraph checkbox-text requirement'> { childDomainInfo.value.label } fuses are burnt </p>
-				</label>
-				<p class = 'paragraph dim'> { `The fuses ${ childFusesToBurn.map((n) => `"${ n }"`).join(', ') } are burnt` } </p>
-				<SwitchAddress requirementsMet = { requirementsMet } account = { account } signingAddress = { correctSigningAddress }/>
-			</div>
-		</div>
-		<div class = 'grid-item' style = 'justify-self: end; justify-content: center;'>
-			<button class = 'button is-primary' { ...buttonDisabled ? { disabled: true } : {} } onClick = { button }>
-				Burn fuses { pending ? <Spinner/> : <></> }
-			</button>
-		</div>
-	</>
-}
-
-export const BurnDomainOwnership = ({ checkBoxes, parentDomainInfo, childDomainInfo, account, pendingCheckBoxes, button }: RequirementProps) => {
-	const pending = pendingCheckBoxes.value?.childOwnershipBurned
-	const correctSigningAddress = getRightSigningAddress('subDomainOwnership', childDomainInfo.value, parentDomainInfo.value)
-	const requirementsMet = checkBoxes.value?.childOwnershipBurned
-	const buttonDisabled = account.value === undefined || !isSameAddress(account.value, correctSigningAddress) || requirementsMet || checkBoxes.value?.childOwnershipBurned || !checkBoxes.value?.childContentHashIsSet || !checkBoxes.value?.childFusesBurned || !checkBoxes.value?.childFusesBurned || !checkBoxes.value?.parentWrapped || !checkBoxes.value?.childWrapped || pending
-	
-	return <>
-		<div class = 'grid-item' style = 'justify-self: start'>
-			<div style = 'display: grid; grid-template-rows: auto auto;'>
-				<label class = 'form-control'>
-					<p class = 'paragraph requirement'> 7) </p>
-					<input type = 'checkbox' name = 'switch' class = 'check' checked = { requirementsMet } disabled = { true }/>
-					<p class = 'paragraph checkbox-text requirement'> { childDomainInfo.value.label } ownership is burnt </p>
-				</label>
-				<p class = 'paragraph dim'> { `The ownership of subdomain is moved to an address controlled by nobody` } </p>
-				<SwitchAddress requirementsMet = { requirementsMet } account = { account } signingAddress = { correctSigningAddress }/>
-			</div>
-		</div>
-		<div class = 'grid-item' style = 'justify-self: end; justify-content: center;'>
-			<button class = 'button is-primary' { ...buttonDisabled ? { disabled: true } : {} } onClick = { button }>
-				Burn ownership { pending ? <Spinner/> : <></> }
-			</button>
+			<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { petalLockDeployed.value !== true || !validContenthash.value || !rightAddress.value || checkBoxes.deepValue === undefined || loadingInfos.value || immutable.value || creating.value } onClick = { makeImmutable }> Make immutable { creating.value ? <Spinner/> : <></> }</button>
 		</div>
 	</>
 }

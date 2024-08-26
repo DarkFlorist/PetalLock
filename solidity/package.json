@@ -1,0 +1,16 @@
+{
+	"name": "petal-lock-contracts",
+	"version": "1.0.0",
+	"description": "",
+	"scripts": {
+		"compile": "tsc && node ./compile.js && node --input-type=module -e \"import { promises as fs } from 'fs'; await fs.rm('./compile.js')\""
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"devDependencies": {
+		"@types/node": "20.10.6",
+		"typescript": "5.4.5",
+		"solc": "0.8.26"
+	}
+}

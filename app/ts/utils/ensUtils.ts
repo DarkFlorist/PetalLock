@@ -1,14 +1,15 @@
-import { createPublicClient, createWalletClient, custom, encodeAbiParameters, http, keccak256, publicActions, ReadContractErrorType, toHex } from 'viem'
+import { createPublicClient, createWalletClient, custom, encodeAbiParameters, getContractAddress, http, labelhash, namehash, numberToBytes, publicActions, ReadContractErrorType } from 'viem'
 import { mainnet } from 'viem/chains'
 import { ENS_WRAPPER_ABI } from '../abi/ens_wrapper_abi.js'
 import 'viem/window'
 import { ENS_REGISTRY_ABI } from '../abi/ens_registry_abi.js'
-import { ENS_BASE_REGISTRY_ABI } from '../abi/ens_base_registry_implementation_abi.js'
-import { assertNever, decodeEthereumNameServiceString } from './utilities.js'
+import { assertNever, splitEnsStringToSubdomainPath } from './utilities.js'
 import { ENS_PUBLIC_RESOLVER_ABI } from '../abi/ens_public_resolver_abi.js'
 import { burnAddresses, CAN_DO_EVERYTHING, ENS_ETHEREUM_NAME_SERVICE, ENS_FLAGS, ENS_PUBLIC_RESOLVER, ENS_REGISTRY_WITH_FALLBACK, ENS_TOKEN_WRAPPER } from './constants.js'
 import { AccountAddress, DomainInfo, EnsFuseName } from '../types/types.js'
 import { ENS_ETHEREUM_NAME_SERVICE_ABI } from '../abi/ens_ethereum_name_service_abi.js'
+import { tryEncodeContentHash } from './contenthash.js'
+import { petalLockContractArtifact } from '../VendoredPetalLock.js'
 
 export const extractENSFuses = (uint: bigint): readonly EnsFuseName[] => {
 	if (uint === CAN_DO_EVERYTHING) return ['Can Do Everything']
@@ -57,7 +58,7 @@ const createWriteClient = (account: AccountAddress) => {
 	return createWalletClient({ account, chain: mainnet, transport: custom(window.ethereum) }).extend(publicActions)
 }
 
-export const getDomainInfo = async (account: AccountAddress | undefined, nameHash: `0x${ string }`, label: string, token: `0x${ string }`): Promise<DomainInfo> => {
+const getDomainInfo = async (account: AccountAddress | undefined, nameHash: `0x${ string }`, label: string, token: `0x${ string }`, subDomain: string): Promise<DomainInfo> => {
 	const client = createReadClient(account)
 	const isWrappedPromise = client.readContract({
 		address: ENS_TOKEN_WRAPPER,
@@ -130,7 +131,19 @@ export const getDomainInfo = async (account: AccountAddress | undefined, nameHas
 		registered: await registeredPromise,
 		contentHash: await contentHashPromise,
 		manager: await managerPromise,
+		subDomain,
 	}
+}
+
+export const getDomainInfos = async (account: AccountAddress | undefined, name: string): Promise<DomainInfo[]> => {
+	const subDomainPath = splitEnsStringToSubdomainPath(name)
+	return await Promise.all(subDomainPath.map((subDomain) => {
+		const [label] = subDomain.split('.')
+		if (label === undefined) throw new Error('undefined label')
+		const nameHash = namehash(subDomain)
+		const token = labelhash(subDomain.slice(0, subDomain.indexOf('.')))
+		return getDomainInfo(account, nameHash, label, token, subDomain)
+	}))
 }
 
 export const parentFuseToBurn = 'Cannot Unwrap Name' as const
@@ -138,21 +151,6 @@ export const parentFuseToBurn = 'Cannot Unwrap Name' as const
 export const doWeNeedToBurnParentFuses = (parentInfo: DomainInfo) => {
 	if (!parentInfo.isWrapped) return true
 	return !parentInfo.fuses.includes(parentFuseToBurn)
-}
-
-export const burnParentFuses = async (account: AccountAddress, parentInfo: DomainInfo) => {
-	if (!doWeNeedToBurnParentFuses(parentInfo)) return undefined
-	const client = createWriteClient(account)
-	const fusesUint = fuseNamesToUint([parentFuseToBurn])
-	const hash = await client.writeContract({
-		chain: mainnet, 
-		account,
-		address: ENS_TOKEN_WRAPPER,
-		abi: ENS_WRAPPER_ABI, 
-		functionName: 'setFuses',
-		args: [parentInfo.nameHash, fusesUint]
-	})
-	return await client.waitForTransactionReceipt({ hash })
 }
 
 export const mandatoryChildFusesToBurn = ['Parent Domain Cannot Control'] as const
@@ -166,76 +164,6 @@ export const doWeNeedToBurnChildFuses = (childInfo: DomainInfo) => {
 	return false
 }
 
-export const burnChildFuses = async (account: AccountAddress, ensLabel: string, childInfo: DomainInfo, parentInfo: DomainInfo) => {
-	const client = createWriteClient(account)
-	const ensLabelhash = keccak256(toHex(ensLabel))
-	if (doWeNeedToBurnChildFuses(childInfo)) {
-		const hash = await client.writeContract({
-			chain: mainnet, 
-			account,
-			address: ENS_TOKEN_WRAPPER,
-			abi: ENS_WRAPPER_ABI, 
-			functionName: 'setChildFuses',
-			args: [parentInfo.nameHash, ensLabelhash, fuseNamesToUint(childFusesToBurn), parentInfo.expiry]
-		})
-		return await client.waitForTransactionReceipt({ hash })
-	}
-	return undefined
-}
-
-export const wrapDomain = async (account: AccountAddress, domainInfo: DomainInfo, subdomain: boolean) => {
-	if (domainInfo.isWrapped) return undefined
-	const client = createWriteClient(account)
-	if (subdomain) {
-		if (await client.readContract({
-			account,
-			address: ENS_REGISTRY_WITH_FALLBACK,
-			abi: ENS_BASE_REGISTRY_ABI,
-			functionName: 'isApprovedForAll',
-			args: [account, ENS_TOKEN_WRAPPER]
-		}) === false) {
-			const requestHash1 = await client.writeContract({
-				account,
-				address: ENS_REGISTRY_WITH_FALLBACK,
-				abi: ENS_BASE_REGISTRY_ABI,
-				functionName: 'setApprovalForAll',
-				args: [ENS_TOKEN_WRAPPER, true]
-			})
-			await client.waitForTransactionReceipt({ hash: requestHash1 })
-		}
-		const requestHash2 = await client.writeContract({
-			account,
-			address: ENS_TOKEN_WRAPPER,
-			abi: ENS_WRAPPER_ABI, 
-			functionName: 'wrap',
-			args: [decodeEthereumNameServiceString(domainInfo.label) as `0x${ string }`, account, ENS_PUBLIC_RESOLVER]
-		})
-		return await client.waitForTransactionReceipt({ hash: requestHash2 })
-	}
-
-	const ensSubDomain = domainInfo.label
-	const [ensLabel] = ensSubDomain.split('.')
-	if (ensLabel === undefined) throw new Error('undefined sub')
-	const ensLabelhash = keccak256(toHex(ensLabel))
-	const encodedData = encodeAbiParameters(
-		[
-			{ name: 'label', type: 'string' },
-			{ name: 'owner', type: 'address' },
-			{ name: 'ownerControlledFuses', type: 'uint16' },
-			{ name: 'resolver', type: 'address' },
-		],
-		[ensLabel, account, 0, ENS_PUBLIC_RESOLVER]
-	)
-	const requestHash2 = await client.writeContract({
-		account,
-		address: ENS_ETHEREUM_NAME_SERVICE,
-		abi: ENS_BASE_REGISTRY_ABI, 
-		functionName: 'safeTransferFrom',
-		args: [account, ENS_TOKEN_WRAPPER, BigInt(ensLabelhash), encodedData]
-	})
-	return await client.waitForTransactionReceipt({ hash: requestHash2 })
-}
-
 export const isValidEnsSubDomain = (subdomain: string): boolean => {
 	// Regex to validate the ENS subdomain with infinite subdomains support
 	const ensRegex = /^(?!-)([a-zA-Z0-9-]+\.)*(?!-)[a-zA-Z0-9-]+(?<!-)\.eth$/
@@ -246,59 +174,69 @@ export const isChildOwnershipBurned = (childInfo: DomainInfo) => {
 	return burnAddresses.map((b) => BigInt(b)).includes(BigInt(childInfo.owner)) && childInfo.isWrapped
 }
 
-export const transferChildOwnershipAway = async (account: AccountAddress, childInfo: DomainInfo) => {
-	if (isChildOwnershipBurned(childInfo)) return undefined
+export const proxyDeployerAddress = `0x7a0d94f55792c434d74a40883c6ed8545e406d12`
+
+export async function ensureProxyDeployerDeployed(account: AccountAddress): Promise<void> {
+	const wallet = createWriteClient(account)
+	const deployerBytecode = await wallet.getCode({ address: proxyDeployerAddress })
+	if (deployerBytecode === '0x60003681823780368234f58015156014578182fd5b80825250506014600cf3') return
+	const ethSendHash = await wallet.sendTransaction({ to: '0x4c8d290a1b368ac4728d83a9e8321fc3af2b39b1', amount: 10000000000000000n })
+	await wallet.waitForTransactionReceipt({ hash: ethSendHash })
+	const deployHash = await wallet.sendRawTransaction({ serializedTransaction: '0xf87e8085174876e800830186a08080ad601f80600e600039806000f350fe60003681823780368234f58015156014578182fd5b80825250506014600cf31ba02222222222222222222222222222222222222222222222222222222222222222a02222222222222222222222222222222222222222222222222222222222222222' })
+	await wallet.waitForTransactionReceipt({ hash: deployHash })
+}
+
+export function getPetalLockAddress() {
+	const bytecode: `0x${ string }` = `0x${ petalLockContractArtifact.contracts['PetalLock.sol'].PetalLock.evm.bytecode.object }`
+	return getContractAddress({ bytecode, from: proxyDeployerAddress, opcode: 'CREATE2', salt: numberToBytes(0) })
+}
+
+export const isPetalLockDeployed = async (account: AccountAddress | undefined) => {
+	const wallet = createReadClient(account)
+	const expectedDeployedBytecode: `0x${ string }` = `0x${ petalLockContractArtifact.contracts['PetalLock.sol'].PetalLock.evm.deployedBytecode.object }`
+	const address = getPetalLockAddress()
+	const deployedBytecode = await wallet.getCode({ address })
+	return deployedBytecode === expectedDeployedBytecode
+}
+
+export const deployPetalLock = async (account: AccountAddress) => {
+	if (await isPetalLockDeployed(account)) throw new Error('already deployed')
+	await ensureProxyDeployerDeployed(account)
 	const client = createWriteClient(account)
+	const bytecode: `0x${ string }` = `0x${ petalLockContractArtifact.contracts['PetalLock.sol'].PetalLock.evm.bytecode.object }`
+	const hash = await client.sendTransaction({ to: proxyDeployerAddress, data: bytecode })
+	return await client.waitForTransactionReceipt({ hash })
+}
+
+export const callPetalLock = async (account: AccountAddress, domainInfos: DomainInfo[], contentHash: string) => {
+	const client = createWriteClient(account)
+	const petalLockAddress = getPetalLockAddress()
+	const subdomainRouteNames = domainInfos.map((x) => x.subDomain)
+	const labels = subdomainRouteNames.map((p) => {
+		const [label] = p.split('.')
+		if (label === undefined) throw new Error('Not a valid ENS sub domain')
+		return label
+	})
+	const subdomainRouteNodes = subdomainRouteNames.map((pathPart) => namehash(pathPart))
+	const contenthash = tryEncodeContentHash(contentHash)
+	if (contenthash === undefined) throw new Error('Unable to decode content hash')
+
+	if (subdomainRouteNodes[0] === undefined) throw new Error('Not a valid ENS sub domain')
+	const ownedTokens = domainInfos.filter((info) => info.registered).map((info) => BigInt(info.nameHash))
+	const data = encodeAbiParameters([
+		{ name: 'labels', type: 'string[]' },
+		{ name: 'subdomainRouteNodes', type: 'bytes32[]' },
+		{ name: 'contenthash', type: 'bytes' },
+	], [labels, subdomainRouteNodes, contenthash])
 	const hash = await client.writeContract({
 		chain: mainnet,
 		account,
 		address: ENS_TOKEN_WRAPPER,
 		abi: ENS_WRAPPER_ABI, 
-		functionName: 'safeTransferFrom',
-		args: [childInfo.owner, burnAddresses[0], BigInt(childInfo.nameHash), 1n, '0x0']
+		functionName: 'safeBatchTransferFrom',
+		args: [account, petalLockAddress, ownedTokens, ownedTokens.map(() => 1n), data]
 	})
-	return await client.waitForTransactionReceipt({ hash })
-}
 
-export const createSubDomain = async (account: AccountAddress, childInfo: DomainInfo, parentInfo: DomainInfo) => {
-	if (childInfo.registered) return undefined
-	const client = createWriteClient(account)
-	if (parentInfo.isWrapped) {
-		const [subDomainName] = childInfo.label.split('.')
-		if (subDomainName === undefined) throw new Error('subdomain missing')
-		const hash = await client.writeContract({
-			chain: mainnet,
-			account,
-			address: ENS_TOKEN_WRAPPER,
-			abi: ENS_WRAPPER_ABI, 
-			functionName: 'setSubnodeRecord',
-			args: [parentInfo.nameHash, subDomainName, parentInfo.owner, ENS_PUBLIC_RESOLVER, 0n, fuseNamesToUint(childFusesToBurn), parentInfo.expiry]
-		})
-		return await client.waitForTransactionReceipt({ hash })
-	}
-	else {
-		const hash = await client.writeContract({
-			chain: mainnet,
-			account,
-			address: ENS_REGISTRY_WITH_FALLBACK,
-			abi: ENS_REGISTRY_ABI, 
-			functionName: 'setSubnodeRecord',
-			args: [parentInfo.nameHash, childInfo.nameHash, account, ENS_PUBLIC_RESOLVER, 0n]
-		})
-		return await client.waitForTransactionReceipt({ hash })
-	}
-}
-
-export const setContentHash = async (account: AccountAddress, node: DomainInfo, contenthash: `0x${ string }`) => {
-	const client = createWriteClient(account)
-	const hash = await client.writeContract({
-		chain: mainnet,
-		account,
-		address: ENS_PUBLIC_RESOLVER,
-		abi: ENS_PUBLIC_RESOLVER_ABI, 
-		functionName: 'setContenthash',
-		args: [node.nameHash, contenthash]
-	})
 	return await client.waitForTransactionReceipt({ hash })
 }
 
