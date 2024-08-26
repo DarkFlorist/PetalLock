@@ -6,6 +6,7 @@ import { isSameAddress } from '../utils/utilities.js'
 import { OptionalSignal } from './PreactUtils.js'
 import { isValidContentHashString } from '../utils/contenthash.js'
 import { Spinner } from './Spinner.js'
+import { isAddress } from 'viem'
 
 interface SwitchAddressProps {
 	account: Signal<AccountAddress | undefined>
@@ -86,9 +87,11 @@ export const ParentRequirements = ( { checkBoxes } : { checkBoxes: ParentChecks 
 
 interface CreateProps {
 	contentHashInput: Signal<string>
+	handleContentHashInput: (input: string) => void
+	resolutionAddressInput: Signal<string>
+	handleResolutionAddressInput: (input: string) => void
 	loadingInfos: Signal<boolean>
 	immutable: Signal<boolean>
-	handleContentHashInput: (input: string) => void
 	account: Signal<AccountAddress | undefined>
 	checkBoxes: OptionalSignal<CheckBoxes>
 	updateInfos: (showLoading: boolean) => Promise<void>
@@ -96,7 +99,7 @@ interface CreateProps {
 	petalLockDeployed: Signal<boolean | undefined>
 }
 
-export const Create = ( { contentHashInput, loadingInfos, immutable, handleContentHashInput, account, checkBoxes, updateInfos, creating, petalLockDeployed }: CreateProps) => {
+export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos, immutable, handleContentHashInput, handleResolutionAddressInput, account, checkBoxes, updateInfos, creating, petalLockDeployed }: CreateProps) => {
 	if (checkBoxes.deepValue === undefined) return <></>
 	const subDomain = checkBoxes.deepValue[checkBoxes.deepValue.length -1]?.domainInfo.subDomain
 	if (subDomain === undefined) throw new Error('missing subdomain')
@@ -106,7 +109,7 @@ export const Create = ( { contentHashInput, loadingInfos, immutable, handleConte
 		if (checkBoxes.deepValue === undefined) return
 		try {
 			creating.value = true
-			await callPetalLock(acc, checkBoxes.deepValue.map((value) => value.domainInfo), contentHashInput.value)
+			await callPetalLock(acc, checkBoxes.deepValue.map((value) => value.domainInfo), contentHashInput.value, resolutionAddressInput.value)
 			await updateInfos(false)
 		} catch(e) {
 			throw e
@@ -130,6 +133,7 @@ export const Create = ( { contentHashInput, loadingInfos, immutable, handleConte
 
 	const rightAddress = computed(() => isSameAddress(signingAddress.value, account.value))
 	const validContenthash = computed(() => isValidContentHashString(contentHashInput.value))
+	const validResolutionAddress = computed(() => isAddress(resolutionAddressInput.value))
 	const wrappedIssues = computed(() => {
 		const nonWrappedTokens = checkBoxes.deepValue?.filter((x) => x.exists && !x.isWrapped)
 		if (nonWrappedTokens === undefined || nonWrappedTokens.length === 0) return undefined
@@ -147,12 +151,18 @@ export const Create = ( { contentHashInput, loadingInfos, immutable, handleConte
 		if (first === undefined || first.exists) return undefined
 		return ` - The domain ${ first.domainInfo.subDomain } need to be created before you can use PetalLock to create immutable subdomains under it`
 	})
+	const contentSetProperly = computed(() => {
+		if (resolutionAddressInput.value.length === 0 && validContenthash.value) return true
+		if (contentHashInput.value.length === 0 && validResolutionAddress.value) return true
+		if (validContenthash.value && validResolutionAddress.value) return true
+		return false
+	})
 
 	return <>
 		<div style = 'padding-top: 10px;'>
 			{ !immutable.value ? <div style = 'padding: 10px;'>
 				<p style = 'white-space: nowrap; margin: 0; font-size: 24px; padding-bottom: 10px'>{ `Make the domain immutable!` }</p>
-				<div style = 'display: grid; grid-template-columns: min-content auto; width: 100%; gap: 10px;'>
+				<div style = 'display: grid; grid-template-columns: min-content auto; width: 100%; gap: 10px; padding-bottom: 10px;'>
 					<p style = 'white-space: nowrap; margin: 0;'>{ `Content hash:` }</p>
 					<input 
 						style = 'height: fit-content;'
@@ -164,6 +174,18 @@ export const Create = ( { contentHashInput, loadingInfos, immutable, handleConte
 						onInput = { e => handleContentHashInput(e.currentTarget.value) }
 					/>
 				</div>
+				<div style = 'display: grid; grid-template-columns: min-content auto; width: 100%; gap: 10px;'>
+					<p style = 'white-space: nowrap; margin: 0;'>{ `Resolution address:` }</p>
+					<input 
+						style = 'height: fit-content;'
+						class = 'input'
+						type = 'text'
+						width = '100%'
+						placeholder = '0x...'
+						value = { resolutionAddressInput.value } 
+						onInput = { e => handleResolutionAddressInput(e.currentTarget.value) }
+					/>
+				</div>
 			</div> : <></> }
 			
 			{ petalLockDeployed.value === false ? <>
@@ -172,13 +194,16 @@ export const Create = ( { contentHashInput, loadingInfos, immutable, handleConte
 			</> : <></> }
 			{ immutable.value ? <></> : <>
 				<div style = 'padding: 10px; display: block;'>
-					{ domainExistIssue.value === undefined ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { domainExistIssue.value } </p>}
+					{ domainExistIssue.value === undefined ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { domainExistIssue.value } </p> }
 					<SwitchAddress requirementsMet = { loadingInfos.value } account = { account } signingAddress = { signingAddress }/>
-					{ validContenthash.value ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ` - Set a valid content hash` } </p>}
-					{ wrappedIssues.value === undefined ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { wrappedIssues.value } </p>}
-					{ ownershipIssues.value === undefined ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ownershipIssues.value } </p>}
+					{ validContenthash.value || contentHashInput.value.length == 0 ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ` - Content hash is not valid` } </p> }
+					{ validResolutionAddress.value || resolutionAddressInput.value.length == 0 ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ` - Resolution address is not a valid address` } </p> }
+					{ validContenthash.value || validResolutionAddress.value ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ` - Set content hash or resolution address or both` } </p> }
+	
+					{ wrappedIssues.value === undefined ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { wrappedIssues.value } </p> }
+					{ ownershipIssues.value === undefined ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ownershipIssues.value } </p> }
 				</div>
-				<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { ownershipIssues.value !== undefined || wrappedIssues.value !== undefined || petalLockDeployed.value !== true || !validContenthash.value || !rightAddress.value || checkBoxes.deepValue === undefined || loadingInfos.value || immutable.value || creating.value } onClick = { makeImmutable }> Make immutable { creating.value ? <Spinner/> : <></> }</button>
+				<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { ownershipIssues.value !== undefined || wrappedIssues.value !== undefined || petalLockDeployed.value !== true || !contentSetProperly.value || !rightAddress.value || checkBoxes.deepValue === undefined || loadingInfos.value || immutable.value || creating.value } onClick = { makeImmutable }> Make immutable { creating.value ? <Spinner/> : <></> }</button>
 			</> }
 		</div>
 	</>

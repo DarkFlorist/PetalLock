@@ -27,6 +27,7 @@ const WalletComponent = ({ account }: WalletComponentProps) => {
 export function App() {
 	const inputValue = useSignal<string>('')
 	const contentHashInput = useSignal<string>('') 
+	const resolutionAddressInput = useSignal<string>('') 
 	const errorString = useOptionalSignal<string>(undefined)
 	const loadingAccount = useSignal<boolean>(false)
 	const isWindowEthereum = useSignal<boolean>(true)
@@ -112,6 +113,9 @@ export function App() {
 	function handleContentHashInput(value: string) {
 		contentHashInput.value = value
 	}
+	function handleResolutionAddressInput(value: string) {
+		resolutionAddressInput.value = value
+	}
 
 	useEffect(() => {
 		if (window.ethereum === undefined) {
@@ -177,9 +181,11 @@ export function App() {
 
 			<Create
 				contentHashInput = { contentHashInput }
+				handleContentHashInput = { handleContentHashInput }
+				resolutionAddressInput = { resolutionAddressInput }
+				handleResolutionAddressInput = { handleResolutionAddressInput }
 				loadingInfos = { loadingInfos }
 				immutable = { immutable }
-				handleContentHashInput= { handleContentHashInput }
 				account = { account }
 				checkBoxes = { checkBoxes }
 				updateInfos = { updateInfos }
