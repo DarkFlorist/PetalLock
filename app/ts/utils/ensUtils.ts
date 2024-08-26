@@ -223,11 +223,25 @@ export const callPetalLock = async (account: AccountAddress, domainInfos: Domain
 
 	if (subdomainRouteNodes[0] === undefined) throw new Error('Not a valid ENS sub domain')
 	const ownedTokens = domainInfos.filter((info) => info.registered).map((info) => BigInt(info.nameHash))
+
+	const subDomainLabelNode = [
+		{ name: 'label', type: 'string' },
+		{ name: 'node', type: 'bytes32' }
+	] as const
+
+	const pathToChild: { label: string, node: `0x${ string }` }[] = []
+	for (let i = 0; i < labels.length; i++) {
+		const labelAtIndex = labels[i]
+		const nodeAtIndex = subdomainRouteNodes[i]
+		if (labelAtIndex === undefined) throw new Error('missing label at index')
+		if (nodeAtIndex === undefined) throw new Error('missing node at index')
+		pathToChild.push({ label: labelAtIndex, node: nodeAtIndex })
+	}
+
 	const data = encodeAbiParameters([
-		{ name: 'labels', type: 'string[]' },
-		{ name: 'subdomainRouteNodes', type: 'bytes32[]' },
+		{ name: 'pathToChild', components: subDomainLabelNode, type: 'tuple[]' },
 		{ name: 'contenthash', type: 'bytes' },
-	], [labels, subdomainRouteNodes, contenthash])
+	], [pathToChild, contenthash])
 	const hash = await client.writeContract({
 		chain: mainnet,
 		account,
@@ -236,10 +250,9 @@ export const callPetalLock = async (account: AccountAddress, domainInfos: Domain
 		functionName: 'safeBatchTransferFrom',
 		args: [account, petalLockAddress, ownedTokens, ownedTokens.map(() => 1n), data]
 	})
-
 	return await client.waitForTransactionReceipt({ hash })
 }
-
+  
 export const getRightSigningAddress = (transaction: 'setContentHash' | 'wrapParent' | 'wrapChild' | 'parentFuses' | 'childFuses' | 'subDomainOwnership' | 'createChild', childInfo: DomainInfo, parentInfo: DomainInfo) => {
 	switch(transaction) {
 		case 'setContentHash': return childInfo.owner
