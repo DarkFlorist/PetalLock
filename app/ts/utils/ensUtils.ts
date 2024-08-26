@@ -58,6 +58,10 @@ const createWriteClient = (account: AccountAddress) => {
 	return createWalletClient({ account, chain: mainnet, transport: custom(window.ethereum) }).extend(publicActions)
 }
 
+export const getChainId = async (account: AccountAddress) => {
+	return await createWriteClient(account).getChainId()
+}
+
 const getDomainInfo = async (account: AccountAddress | undefined, nameHash: `0x${ string }`, label: string, token: `0x${ string }`, subDomain: string): Promise<DomainInfo> => {
 	const client = createReadClient(account)
 	const isWrappedPromise = client.readContract({
