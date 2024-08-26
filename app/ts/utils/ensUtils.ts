@@ -1,9 +1,9 @@
-import { createPublicClient, createWalletClient, custom, encodeAbiParameters, getContractAddress, http, labelhash, namehash, numberToBytes, publicActions, ReadContractErrorType } from 'viem'
+import { createPublicClient, createWalletClient, custom, encodeAbiParameters, getAddress, getContractAddress, http, isAddress, labelhash, namehash, numberToBytes, publicActions, ReadContractErrorType } from 'viem'
 import { mainnet } from 'viem/chains'
 import { ENS_WRAPPER_ABI } from '../abi/ens_wrapper_abi.js'
 import 'viem/window'
 import { ENS_REGISTRY_ABI } from '../abi/ens_registry_abi.js'
-import { assertNever, splitEnsStringToSubdomainPath } from './utilities.js'
+import { splitEnsStringToSubdomainPath } from './utilities.js'
 import { ENS_PUBLIC_RESOLVER_ABI } from '../abi/ens_public_resolver_abi.js'
 import { burnAddresses, CAN_DO_EVERYTHING, ENS_ETHEREUM_NAME_SERVICE, ENS_FLAGS, ENS_PUBLIC_RESOLVER, ENS_REGISTRY_WITH_FALLBACK, ENS_TOKEN_WRAPPER } from './constants.js'
 import { AccountAddress, DomainInfo, EnsFuseName } from '../types/types.js'
@@ -208,7 +208,7 @@ export const deployPetalLock = async (account: AccountAddress) => {
 	return await client.waitForTransactionReceipt({ hash })
 }
 
-export const callPetalLock = async (account: AccountAddress, domainInfos: DomainInfo[], contentHash: string) => {
+export const callPetalLock = async (account: AccountAddress, domainInfos: DomainInfo[], contentHash: string, resolutionAddress: string) => {
 	const client = createWriteClient(account)
 	const petalLockAddress = getPetalLockAddress()
 	const subdomainRouteNames = domainInfos.map((x) => x.subDomain)
@@ -218,8 +218,10 @@ export const callPetalLock = async (account: AccountAddress, domainInfos: Domain
 		return label
 	})
 	const subdomainRouteNodes = subdomainRouteNames.map((pathPart) => namehash(pathPart))
-	const contenthash = tryEncodeContentHash(contentHash)
-	if (contenthash === undefined) throw new Error('Unable to decode content hash')
+	const decodedContentHash = contentHash === '' ? '0x0' : tryEncodeContentHash(contentHash)
+	if (resolutionAddress.length > 0 && !isAddress(resolutionAddress, { strict: true })) throw new Error('Resolution address is not valid')
+	const decodedResolutionAddress = resolutionAddress === '' ? '0x0' : getAddress(resolutionAddress)
+	if (decodedContentHash === undefined) throw new Error('Unable to decode content hash')
 
 	if (subdomainRouteNodes[0] === undefined) throw new Error('Not a valid ENS sub domain')
 	const ownedTokens = domainInfos.filter((info) => info.registered).map((info) => BigInt(info.nameHash))
@@ -241,7 +243,8 @@ export const callPetalLock = async (account: AccountAddress, domainInfos: Domain
 	const data = encodeAbiParameters([
 		{ name: 'pathToChild', components: subDomainLabelNode, type: 'tuple[]' },
 		{ name: 'contenthash', type: 'bytes' },
-	], [pathToChild, contenthash])
+		{ name: 'resolutionAddress', type: 'address' },
+	], [pathToChild, decodedContentHash, decodedResolutionAddress])
 	const hash = await client.writeContract({
 		chain: mainnet,
 		account,
@@ -251,17 +254,4 @@ export const callPetalLock = async (account: AccountAddress, domainInfos: Domain
 		args: [account, petalLockAddress, ownedTokens, ownedTokens.map(() => 1n), data]
 	})
 	return await client.waitForTransactionReceipt({ hash })
-}
-  
-export const getRightSigningAddress = (transaction: 'setContentHash' | 'wrapParent' | 'wrapChild' | 'parentFuses' | 'childFuses' | 'subDomainOwnership' | 'createChild', childInfo: DomainInfo, parentInfo: DomainInfo) => {
-	switch(transaction) {
-		case 'setContentHash': return childInfo.owner
-		case 'createChild': return parentInfo.isWrapped ? parentInfo.owner : parentInfo.registeryOwner
-		case 'wrapChild': return childInfo.manager
-		case 'wrapParent': return parentInfo.registeryOwner
-		case 'parentFuses': return parentInfo.owner
-		case 'childFuses': return parentInfo.owner
-		case 'subDomainOwnership': return childInfo.owner
-		default: assertNever(transaction)
-	}
 }

@@ -36,6 +36,7 @@ interface IEnsTokenWrapper {
 
 interface IEnsPublicResolver {
 	function setContenthash(bytes32 node, bytes calldata hash) external;
+	function setAddr(bytes32 node, address resolutionAddress) external;
 }
 
 IEnsRegistryWithFallBack constant ensRegistry = IEnsRegistryWithFallBack(ENS_REGISTRY_WITH_FALLBACK);
@@ -61,7 +62,7 @@ struct SubDomainLabelNode {
 }
 
 contract PetalLock {
-	function makeImmutable(address originalOwner, SubDomainLabelNode[] memory pathToChild, bytes memory contenthash) private {
+	function makeImmutable(address originalOwner, SubDomainLabelNode[] memory pathToChild, bytes memory contenthash, address resolutionAddress) private {
 		uint256 finalChildIndex = pathToChild.length - 1;
 
 		// handle parents, set fuses and create child if needed
@@ -100,7 +101,8 @@ contract PetalLock {
 		}
 		
 		// set content hash
-		ensPublicResolver.setContenthash(pathToChild[finalChildIndex].node, contenthash);
+		if (contenthash.length != 0) { ensPublicResolver.setContenthash(pathToChild[finalChildIndex].node, contenthash); }
+		if (resolutionAddress != address(0x0)) { ensPublicResolver.setAddr(pathToChild[finalChildIndex].node, resolutionAddress); }
 
 		// burn child owner
 		ensTokenWrapper.safeTransferFrom(address(this), burnAddress, uint256(pathToChild[finalChildIndex].node), 1, bytes(''));
@@ -125,13 +127,14 @@ contract PetalLock {
 	// when receiving wrapped ens tokens, make the last child immutable
 	function onERC1155BatchReceived(address, address from, uint256[] memory ids, uint256[] memory, bytes memory data) public returns (bytes4) {
 		require(msg.sender == ENS_TOKEN_WRAPPER, 'Supports only Wrapped ENS');
-		(SubDomainLabelNode[] memory pathToChild, bytes memory contenthash) = abi.decode(data, (SubDomainLabelNode[], bytes));
+		(SubDomainLabelNode[] memory pathToChild, bytes memory contenthash, address resolutionAddress) = abi.decode(data, (SubDomainLabelNode[], bytes, address));
 		
 		for (uint256 idIndex = 0; idIndex < ids.length; idIndex++) {	
 			require(exists(ids[idIndex], pathToChild), 'Sent token does not exist in nodes');
 		}
-		
-		makeImmutable(from, pathToChild, contenthash);
+		require(contenthash.length != 0 || resolutionAddress != address(0x0), 'Either resolution address or content hash need to be set');
+
+		makeImmutable(from, pathToChild, contenthash, resolutionAddress);
 		return this.onERC1155BatchReceived.selector;
 	}
 }
