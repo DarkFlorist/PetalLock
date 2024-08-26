@@ -92,7 +92,7 @@ export function App() {
 	function handleInput(value: string) {
 		inputValue.value = value
 		if (inputTimeoutRef.current !== null) clearTimeout(inputTimeoutRef.current)
-		inputTimeoutRef.current = window.setTimeout(() => {
+		inputTimeoutRef.current = setTimeout(() => {
 			inputTimeoutRef.current = null
 			const ensSubDomain = inputValue.value.toLowerCase()
 			if (!isValidEnsSubDomain(ensSubDomain)) return setError(`${ ensSubDomain } is not a valid ENS subdomain. The format should be similar to "2.horswap.eth" or "1.lunaria.darkflorist.eth"`)
