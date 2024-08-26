@@ -79,6 +79,7 @@ export function App() {
 						immutable: currElement.isWrapped && !doWeNeedToBurnChildFuses(currElement) && isChildOwnershipBurned(currElement),
 						contentHashIsSet: currElement.contentHash !== '0x',
 						domainInfo: currElement,
+						resolutionAddressIsSet: BigInt(currElement.resolutionAddress) !== 0n, 
 					}
 				}
 				return {
@@ -169,7 +170,7 @@ export function App() {
 				<div class = 'petal-lock'>
 					<img src = 'favicon.svg' alt = 'Icon' style ='width: 60px;'/> PetalLock
 				</div>
-				<p class = 'sub-title'>Make immutable ENS subdomains</p>
+				<p class = 'sub-title'>Make immutable ENS domains and subdomains</p>
 			</div>
 		
 			<input 

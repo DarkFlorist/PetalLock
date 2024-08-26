@@ -98,6 +98,14 @@ const getDomainInfo = async (account: AccountAddress | undefined, nameHash: `0x$
 		functionName: 'contenthash',
 		args: [nameHash]
 	})
+
+	const resolutionAddressPromise = client.readContract({
+		address: ENS_PUBLIC_RESOLVER,
+		abi: ENS_PUBLIC_RESOLVER_ABI, 
+		functionName: 'addr',
+		args: [nameHash]
+	})
+
 	const getRegistryOwner = async () => {
 		try {
 			return await client.readContract({
@@ -136,6 +144,7 @@ const getDomainInfo = async (account: AccountAddress | undefined, nameHash: `0x$
 		contentHash: await contentHashPromise,
 		manager: await managerPromise,
 		subDomain,
+		resolutionAddress: await resolutionAddressPromise,
 	}
 }
 
@@ -170,7 +179,7 @@ export const doWeNeedToBurnChildFuses = (childInfo: DomainInfo) => {
 
 export const isValidEnsSubDomain = (subdomain: string): boolean => {
 	// Regex to validate the ENS subdomain with infinite subdomains support
-	const ensRegex = /^(?!-)([a-zA-Z0-9-]+\.)+[a-zA-Z0-9-]+(?<!-)\.eth$/
+	const ensRegex = /^(?!-)([a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+(?<!-)\.eth$/
 	return ensRegex.test(subdomain)
 }
 
@@ -222,10 +231,10 @@ export const callPetalLock = async (account: AccountAddress, domainInfos: Domain
 		return label
 	})
 	const subdomainRouteNodes = subdomainRouteNames.map((pathPart) => namehash(pathPart))
-	const decodedContentHash = contentHash === '' ? '0x0' : tryEncodeContentHash(contentHash)
+	const decodedContentHash = contentHash === '' ? '0x' : tryEncodeContentHash(contentHash)
+	if (decodedContentHash === undefined) throw new Error('Unable to decode content hash')
 	if (resolutionAddress.length > 0 && !isAddress(resolutionAddress, { strict: true })) throw new Error('Resolution address is not valid')
 	const decodedResolutionAddress = resolutionAddress === '' ? '0x0' : getAddress(resolutionAddress)
-	if (decodedContentHash === undefined) throw new Error('Unable to decode content hash')
 
 	if (subdomainRouteNodes[0] === undefined) throw new Error('Not a valid ENS sub domain')
 	const ownedTokens = domainInfos.filter((info) => info.registered).map((info) => BigInt(info.nameHash))
