@@ -173,7 +173,7 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 						onDebouncedChange = { () => { contentHashInput.value = tempContentHashInput.value } }
 						validate = { isValidContentHashString }
 						onValidationError = { () => {} }
-						validationError = 'please provide a valid content hash, like: ipfs://bafybeie7zcqhap5vopmfmacoy6xa5jxguxepeseca4iilnchvydqkivnue'
+						validationError = 'Please provide a valid content hash, like: ipfs://bafybeie7zcqhap5vopmfmacoy6xa5jxguxepeseca4iilnchvydqkivnue'
 						inputValue = { tempContentHashInput }
 					/>
 				</div>
