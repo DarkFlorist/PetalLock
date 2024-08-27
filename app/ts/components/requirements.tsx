@@ -1,4 +1,4 @@
-import { computed, Signal } from '@preact/signals'
+import { computed, Signal, useSignal } from '@preact/signals'
 import { AccountAddress, CheckBoxes, FinalChildChecks, ParentChecks } from '../types/types.js'
 import { burnAddresses, ENS_TOKEN_WRAPPER } from '../utils/constants.js'
 import { callPetalLock, childFusesToBurn, deployPetalLock, parentFuseToBurn } from '../utils/ensUtils.js'
@@ -7,6 +7,7 @@ import { OptionalSignal } from './PreactUtils.js'
 import { isValidContentHashString } from '../utils/contenthash.js'
 import { Spinner } from './Spinner.js'
 import { isAddress } from 'viem'
+import { DebounceInput } from './DebounceInput.js'
 
 interface SwitchAddressProps {
 	account: Signal<AccountAddress | undefined>
@@ -87,9 +88,7 @@ export const ParentRequirements = ( { checkBoxes } : { checkBoxes: ParentChecks 
 
 interface CreateProps {
 	contentHashInput: Signal<string>
-	handleContentHashInput: (input: string) => void
 	resolutionAddressInput: Signal<string>
-	handleResolutionAddressInput: (input: string) => void
 	loadingInfos: Signal<boolean>
 	immutable: Signal<boolean>
 	account: Signal<AccountAddress | undefined>
@@ -99,7 +98,10 @@ interface CreateProps {
 	petalLockDeployed: Signal<boolean | undefined>
 }
 
-export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos, immutable, handleContentHashInput, handleResolutionAddressInput, account, checkBoxes, updateInfos, creating, petalLockDeployed }: CreateProps) => {
+export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos, immutable, account, checkBoxes, updateInfos, creating, petalLockDeployed }: CreateProps) => {
+	const tempContentHashInput = useSignal<string>('') 
+	const tempResolutionAddressInput = useSignal<string>('') 
+	
 	if (checkBoxes.deepValue === undefined) return <></>
 	const subDomain = checkBoxes.deepValue[checkBoxes.deepValue.length -1]?.domainInfo.subDomain
 	if (subDomain === undefined) throw new Error('missing subdomain')
@@ -165,26 +167,26 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 				<p style = 'white-space: nowrap; margin: 0; font-size: 24px; padding-bottom: 10px'>{ `Make the domain immutable!` }</p>
 				<div style = 'display: grid; grid-template-columns: min-content auto; width: 100%; gap: 10px; padding-bottom: 10px;'>
 					<p style = 'white-space: nowrap; margin: 0;'>{ `Content hash:` }</p>
-					<input 
-						style = 'height: fit-content;'
-						class = 'input'
-						type = 'text'
-						width = '100%'
+					<DebounceInput
 						placeholder = 'ipfs://bafy...'
-						value = { contentHashInput.value } 
-						onInput = { e => handleContentHashInput(e.currentTarget.value) }
+						delay = { 500 }
+						onDebouncedChange = { () => { contentHashInput.value = tempContentHashInput.value } }
+						validate = { isValidContentHashString }
+						onValidationError = { () => {} }
+						validationError = 'please provide a valid content hash, like: ipfs://bafybeie7zcqhap5vopmfmacoy6xa5jxguxepeseca4iilnchvydqkivnue'
+						inputValue = { tempContentHashInput }
 					/>
 				</div>
 				<div style = 'display: grid; grid-template-columns: min-content auto; width: 100%; gap: 10px;'>
 					<p style = 'white-space: nowrap; margin: 0;'>{ `Resolution address:` }</p>
-					<input 
-						style = 'height: fit-content;'
-						class = 'input'
-						type = 'text'
-						width = '100%'
+					<DebounceInput
 						placeholder = '0x...'
-						value = { resolutionAddressInput.value } 
-						onInput = { e => handleResolutionAddressInput(e.currentTarget.value) }
+						delay = { 500 }
+						onDebouncedChange = { () => {} }
+						validate = { (address: string) => isAddress(address, { strict: true }) }
+						onValidationError = { () => { resolutionAddressInput.value = tempResolutionAddressInput.value } }
+						validationError = 'Please provide a valid address.'
+						inputValue = { tempResolutionAddressInput }
 					/>
 				</div>
 			</div> : <></> }
@@ -197,8 +199,6 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 				<div style = 'padding: 10px; display: block;'>
 					{ domainExistIssue.value === undefined ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { domainExistIssue.value } </p> }
 					<SwitchAddress requirementsMet = { loadingInfos.value } account = { account } signingAddress = { signingAddress }/>
-					{ validContenthash.value || contentHashInput.value.length == 0 ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ` - Content hash is not valid` } </p> }
-					{ validResolutionAddress.value || resolutionAddressInput.value.length == 0 ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ` - Resolution address is not a valid address` } </p> }
 					{ validContenthash.value || validResolutionAddress.value ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ` - Set content hash or resolution address or both` } </p> }
 	
 					{ wrappedIssues.value === undefined ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { wrappedIssues.value } </p> }
