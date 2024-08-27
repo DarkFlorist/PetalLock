@@ -13,6 +13,7 @@ export type DomainInfo = {
 	registered: boolean,
 	contentHash: `0x${ string }`,
 	manager: `0x${ string }`,
+	resolutionAddress: `0x${ string }`,
 }
 
 export type FinalChildChecks = {
@@ -24,6 +25,7 @@ export type FinalChildChecks = {
 	immutable: boolean,
 	contentHashIsSet: boolean,
 	domainInfo: DomainInfo,
+	resolutionAddressIsSet: boolean,
 }
 
 export type ParentChecks = {

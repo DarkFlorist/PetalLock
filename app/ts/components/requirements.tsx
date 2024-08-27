@@ -69,7 +69,7 @@ export const ChildRequirements = ( { checkBoxes } : { checkBoxes: FinalChildChec
 			<Requirement checked = { checkBoxes.isWrapped } primarytext = { `${ checkBoxes.domainInfo.subDomain } is wrapped` } />
 			<Requirement checked = { checkBoxes.fusesBurned } primarytext = { `${ checkBoxes.domainInfo.subDomain } fuses are burnt` } secondaryText = { `The fuses ${ childFusesToBurn.map((n) => `"${ n }"`).join(', ') } are burnt` } />
 			<Requirement checked = { checkBoxes.ownershipBurned } primarytext = { `${ checkBoxes.domainInfo.subDomain } ownership is burnt` } secondaryText = 'The ownership of subdomain is moved to an address controlled by nobody'/>
-			<Requirement checked = { checkBoxes.contentHashIsSet } primarytext = { 'Content hash is set'} secondaryText = 'Content hash should be set for the domain to be useful'/>
+			<Requirement checked = { checkBoxes.contentHashIsSet || checkBoxes.resolutionAddressIsSet } primarytext = { 'Content hash or address is set'} secondaryText = 'Content hash or address should be set for the domain to be useful'/>
 		</div>
 	</>
 }
@@ -109,7 +109,7 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 		if (checkBoxes.deepValue === undefined) return
 		try {
 			creating.value = true
-			await callPetalLock(acc, checkBoxes.deepValue.map((value) => value.domainInfo), contentHashInput.value, resolutionAddressInput.value)
+			await callPetalLock(acc, checkBoxes.deepValue.map((value) => value.domainInfo), contentHashInput.value.trim(), resolutionAddressInput.value.trim())
 			await updateInfos(false)
 		} catch(e) {
 			throw e
@@ -132,8 +132,8 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 	})
 
 	const rightAddress = computed(() => isSameAddress(signingAddress.value, account.value))
-	const validContenthash = computed(() => isValidContentHashString(contentHashInput.value))
-	const validResolutionAddress = computed(() => isAddress(resolutionAddressInput.value))
+	const validContenthash = computed(() => isValidContentHashString(contentHashInput.value.trim()))
+	const validResolutionAddress = computed(() => isAddress(resolutionAddressInput.value.trim()))
 	const wrappedIssues = computed(() => {
 		const nonWrappedTokens = checkBoxes.deepValue?.filter((x) => x.exists && !x.isWrapped)
 		if (nonWrappedTokens === undefined || nonWrappedTokens.length === 0) return undefined
