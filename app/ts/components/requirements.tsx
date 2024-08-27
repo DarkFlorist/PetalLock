@@ -105,7 +105,6 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 	if (checkBoxes.deepValue === undefined) return <></>
 	const subDomain = checkBoxes.deepValue[checkBoxes.deepValue.length -1]?.domainInfo.subDomain
 	if (subDomain === undefined) throw new Error('missing subdomain')
-	// todo check that accesses are correct
 	const makeImmutable = async () => {
 		const acc = account.peek()
 		if (acc === undefined) throw new Error('missing account')

@@ -98,7 +98,6 @@ export function App() {
 			loadingInfos.value = false
 		}
 	}
-
 	const updateChainId = async () => {
 		const acc = account.peek()
 		if (acc === undefined) return
