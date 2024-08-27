@@ -155,10 +155,7 @@ export function App() {
 			<DebounceInput
 				placeholder = '2.horswap.eth'
 				delay = { 1000 }
-				onDebouncedChange = { () => {
-					console.log('update!')
-					updateInfos(true)
-				} }
+				onDebouncedChange = { () => updateInfos(true) }
 				validate = { isValidEnsSubDomain }
 				onValidationError = { clear }
 				validationError = 'The input is not a valid ENS subdomain or domain. The format should be similar to "2.horswap.eth" or "1.lunaria.darkflorist.eth."'
