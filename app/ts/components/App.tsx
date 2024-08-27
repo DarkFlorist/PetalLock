@@ -101,7 +101,7 @@ export function App() {
 	function handleInput(value: string) {
 		inputValue.value = value
 		if (inputTimeoutRef.current !== null) clearTimeout(inputTimeoutRef.current)
-		inputTimeoutRef.current = window.setTimeout(() => {
+		inputTimeoutRef.current = setTimeout(() => {
 			inputTimeoutRef.current = null
 			const ensSubDomain = inputValue.value.toLowerCase()
 			if (!isValidEnsSubDomain(ensSubDomain)) {

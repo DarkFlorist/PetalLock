@@ -46,7 +46,7 @@ IEnsPublicResolver constant ensPublicResolver = IEnsPublicResolver(ENS_PUBLIC_RE
 // fuse combinations
 uint32 constant PARENT_FUSES_TO_BURN = CANNOT_UNWRAP + PARENT_CANNOT_CONTROL;
 uint32 constant FINAL_CHILD_FUSES_TO_BURN = CANNOT_UNWRAP + CANNOT_BURN_FUSES + CANNOT_SET_RESOLVER + CANNOT_CREATE_SUBDOMAIN + PARENT_CANNOT_CONTROL + CANNOT_APPROVE + CAN_EXTEND_EXPIRY;
-address constant burnAddress = 0xdeaDDeADDEaDdeaDdEAddEADDEAdDeadDEADDEaD;
+address constant BURN_ADDRESS = 0xdeaDDeADDEaDdeaDdEAddEADDEAdDeadDEADDEaD;
 
 // check that tokenId exists in an array
 function exists(uint256 tokenId, SubDomainLabelNode[] memory pathToChild) pure returns (bool) {
@@ -109,7 +109,7 @@ contract PetalLock {
 		if (resolutionAddress != address(0x0)) { ensPublicResolver.setAddr(pathToChild[finalChildIndex].node, resolutionAddress); }
 
 		// burn child owner
-		ensTokenWrapper.safeTransferFrom(address(this), burnAddress, uint256(pathToChild[finalChildIndex].node), 1, bytes(''));
+		ensTokenWrapper.safeTransferFrom(address(this), BURN_ADDRESS, uint256(pathToChild[finalChildIndex].node), 1, bytes(''));
 		
 		// return rest of the tokens to the sender
 		uint256[] memory returnableTokens = new uint256[](pathToChild.length - 1);
