@@ -6,6 +6,7 @@ import { ensureError } from '../utils/utilities.js'
 import { AccountAddress, CheckBoxes, DomainInfo, FinalChildChecks, ParentChecks } from '../types/types.js'
 import { Create, Immutable, Requirements } from './requirements.js'
 import { useOptionalSignal } from './PreactUtils.js'
+import { getChainId } from '../utils/ensUtils.js'
 
 interface WalletComponentProps {
 	account: Signal<AccountAddress | undefined>
@@ -33,6 +34,7 @@ export function App() {
 	const isWindowEthereum = useSignal<boolean>(true)
 	const petalLockDeployed = useSignal<boolean | undefined>(undefined)
 	const account = useSignal<AccountAddress | undefined>(undefined)
+	const chainId = useSignal<number | undefined>(undefined)
 	const pathInfo = useOptionalSignal<DomainInfo[]>(undefined)
 	const immutable = useSignal<boolean>(false)
 	const checkBoxes = useOptionalSignal<CheckBoxes>(undefined)
@@ -117,20 +119,26 @@ export function App() {
 		resolutionAddressInput.value = value
 	}
 
+	const updateChainId = async () => {
+		const acc = account.peek()
+		if (acc === undefined) return
+		chainId.value = await getChainId(acc)
+	}
+
 	useEffect(() => {
 		if (window.ethereum === undefined) {
 			isWindowEthereum.value = false
 			return
 		}
 		isWindowEthereum.value = true
-		window.ethereum.on('accountsChanged', function (accounts) {
-			account.value = accounts[0]
-		})
+		window.ethereum.on('accountsChanged', function (accounts) { account.value = accounts[0] })
+		window.ethereum.on('chainChanged', async () => { updateChainId() })
 		const fetchAccount = async () => {
 			try {
 				loadingAccount.value = true
 				const fetchedAccount = await getAccounts()
 				if (fetchedAccount) account.value = fetchedAccount
+				updateChainId()
 			} catch(e) {
 				setError(e)
 			} finally {
@@ -146,7 +154,10 @@ export function App() {
 		}
 	}, [])
 	
-	useEffect(() => { updateInfos(true) }, [account.value])
+	useEffect(() => {
+		updateInfos(true)
+		updateChainId()
+	}, [account.value])
 
 	return <main>
 		<div class = 'app'>
@@ -172,6 +183,8 @@ export function App() {
 			{ loadingInfos.value === true || loadingAccount.value ? <div style = 'max-width: fit-content; margin-inline: auto; padding: 20px;'> <BigSpinner/> </div> : <></> }
 
 			{ errorString.deepValue !== undefined ? <p class = 'error-component'> { errorString.value }</p> : <> </> }
+
+			{ chainId.value !== undefined && chainId.value !== 1 ? <p class = 'error-component'> { 'PetalLock functions only on Ethereum Mainnet. Please switch to Ethereum Mainnet.' }</p> : <> </> }
 			
 			{ checkBoxes.deepValue === undefined || checkBoxes.deepValue[0] === undefined || checkBoxes.deepValue[0].exists ? <></>: <p style = 'color: #b43c42'>{ `The name ${ checkBoxes.deepValue[0].domainInfo.label } does not exist in the ENS registry. You need to register the domain to use PetalLock.` }</p> }
 			
