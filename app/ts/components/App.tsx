@@ -7,6 +7,7 @@ import { AccountAddress, CheckBoxes, DomainInfo, FinalChildChecks, ParentChecks 
 import { Create, Immutable, Requirements } from './requirements.js'
 import { useOptionalSignal } from './PreactUtils.js'
 import { getChainId } from '../utils/ensUtils.js'
+import { DebounceInput } from './DebounceInput.js'
 
 interface WalletComponentProps {
 	account: Signal<AccountAddress | undefined>
@@ -97,29 +98,6 @@ export function App() {
 			loadingInfos.value = false
 		}
 	}
-
-	function handleInput(value: string) {
-		inputValue.value = value
-		if (inputTimeoutRef.current !== null) clearTimeout(inputTimeoutRef.current)
-		inputTimeoutRef.current = setTimeout(() => {
-			inputTimeoutRef.current = null
-			const ensSubDomain = inputValue.value.toLowerCase()
-			if (!isValidEnsSubDomain(ensSubDomain)) {
-				clear()
-				return setError(`${ ensSubDomain } is not a valid ENS subdomain. The format should be similar to "2.horswap.eth" or "1.lunaria.darkflorist.eth."`)
-			}
-			setError(undefined)
-			updateInfos(true)
-		}, 500)
-	}
-
-	function handleContentHashInput(value: string) {
-		contentHashInput.value = value
-	}
-	function handleResolutionAddressInput(value: string) {
-		resolutionAddressInput.value = value
-	}
-
 	const updateChainId = async () => {
 		const acc = account.peek()
 		if (acc === undefined) return
@@ -173,12 +151,14 @@ export function App() {
 				<p class = 'sub-title'>Make immutable ENS domains and subdomains</p>
 			</div>
 		
-			<input 
-				class = 'input' 
-				type = 'text' 
-				placeholder = '2.horswap.eth' 
-				value = { inputValue.value } 
-				onInput = { e => handleInput(e.currentTarget.value) }
+			<DebounceInput
+				placeholder = '2.horswap.eth'
+				delay = { 1000 }
+				onDebouncedChange = { () => updateInfos(true) }
+				validate = { isValidEnsSubDomain }
+				onValidationError = { clear }
+				validationError = 'The input is not a valid ENS subdomain or domain. The format should be similar to "2.horswap.eth" or "1.lunaria.darkflorist.eth."'
+				inputValue = { inputValue }
 			/>
 			
 			{ loadingInfos.value === true || loadingAccount.value ? <div style = 'max-width: fit-content; margin-inline: auto; padding: 20px;'> <BigSpinner/> </div> : <></> }
@@ -195,9 +175,7 @@ export function App() {
 
 			<Create
 				contentHashInput = { contentHashInput }
-				handleContentHashInput = { handleContentHashInput }
 				resolutionAddressInput = { resolutionAddressInput }
-				handleResolutionAddressInput = { handleResolutionAddressInput }
 				loadingInfos = { loadingInfos }
 				immutable = { immutable }
 				account = { account }
