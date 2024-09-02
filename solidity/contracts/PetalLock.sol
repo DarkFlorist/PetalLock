@@ -45,8 +45,9 @@ IEnsPublicResolver constant ensPublicResolver = IEnsPublicResolver(ENS_PUBLIC_RE
 
 // fuse combinations
 uint32 constant PARENT_FUSES_TO_BURN = CANNOT_UNWRAP + PARENT_CANNOT_CONTROL;
-uint32 constant FINAL_CHILD_FUSES_TO_BURN = CANNOT_UNWRAP + CANNOT_BURN_FUSES + CANNOT_SET_RESOLVER + CANNOT_CREATE_SUBDOMAIN + PARENT_CANNOT_CONTROL + CANNOT_APPROVE + CAN_EXTEND_EXPIRY;
+uint32 constant FINAL_CHILD_FUSES_TO_BURN = CANNOT_UNWRAP + CANNOT_BURN_FUSES + CANNOT_SET_RESOLVER + CANNOT_SET_TTL + CANNOT_CREATE_SUBDOMAIN + PARENT_CANNOT_CONTROL + CANNOT_APPROVE + CAN_EXTEND_EXPIRY;
 address constant BURN_ADDRESS = 0xdeaDDeADDEaDdeaDdEAddEADDEAdDeadDEADDEaD;
+uint64 constant MAX_UINT64 = type(uint64).max;
 
 // check that tokenId exists in an array
 function exists(uint256 tokenId, SubDomainLabelNode[] memory pathToChild) pure returns (bool) {
@@ -71,34 +72,31 @@ contract PetalLock {
 			// check that the record exists, if not, lets create it
 			if (!ensRegistry.recordExists(node)) {
 				require(i > 0, 'first record need to exist');
-				(,, uint64 parentExpiry) = ensTokenWrapper.getData(uint256(pathToChild[i - 1].node));
 				bytes32 parentNameHash = pathToChild[i - 1].node;
 				if (i == finalChildIndex) {
-					ensTokenWrapper.setSubnodeRecord(parentNameHash, pathToChild[i].label, address(this), ENS_PUBLIC_RESOLVER, 0, FINAL_CHILD_FUSES_TO_BURN, parentExpiry);
+					ensTokenWrapper.setSubnodeRecord(parentNameHash, pathToChild[i].label, address(this), ENS_PUBLIC_RESOLVER, 0, FINAL_CHILD_FUSES_TO_BURN, MAX_UINT64);
 				} else {
-					ensTokenWrapper.setSubnodeRecord(parentNameHash, pathToChild[i].label, address(this), ENS_PUBLIC_RESOLVER, 0, PARENT_FUSES_TO_BURN, parentExpiry);
+					ensTokenWrapper.setSubnodeRecord(parentNameHash, pathToChild[i].label, address(this), ENS_PUBLIC_RESOLVER, 0, PARENT_FUSES_TO_BURN, MAX_UINT64);
 				}
 			} else if (i == finalChildIndex) {
 				if (i == 0) { // only one node in the data
 					ensTokenWrapper.setFuses(pathToChild[i].node, CANNOT_UNWRAP + CANNOT_BURN_FUSES + CANNOT_SET_RESOLVER + CANNOT_CREATE_SUBDOMAIN + CANNOT_APPROVE);
 				} else {
-					(,, uint64 parentExpiry) = ensTokenWrapper.getData(uint256(pathToChild[i - 1].node));
 					// burn child fuses
-					ensTokenWrapper.setChildFuses(pathToChild[i - 1].node, keccak256(abi.encodePacked(pathToChild[i].label)), FINAL_CHILD_FUSES_TO_BURN, parentExpiry);
+					ensTokenWrapper.setChildFuses(pathToChild[i - 1].node, keccak256(abi.encodePacked(pathToChild[i].label)), FINAL_CHILD_FUSES_TO_BURN, MAX_UINT64);
 				}
 			} else {
 				// the node needs to be wraped
 				require(ensTokenWrapper.isWrapped(node), 'node not wrapped');
 				// check that 'Cannot Unwrap Name' is burned for top level parent or paren cannot control and cannot wrap is burnt otherwise
-				(, uint32 newFuses,) = ensTokenWrapper.getData(uint256(pathToChild[i].node));
+				(, uint32 newFuses, ) = ensTokenWrapper.getData(uint256(pathToChild[i].node));
 				if (i == 0) {
 					if (newFuses & CANNOT_UNWRAP != CANNOT_UNWRAP) {
 						ensTokenWrapper.setFuses(pathToChild[i].node, CANNOT_UNWRAP);
 					}
 				} else {
 					if (newFuses & PARENT_FUSES_TO_BURN != PARENT_FUSES_TO_BURN) {
-						(,, uint64 parentExpiry) = ensTokenWrapper.getData(uint256(pathToChild[i - 1].node)); // set childs expiry to be the same as parent, as it cannot be set any longer than that
-						ensTokenWrapper.setChildFuses(pathToChild[i - 1].node, keccak256(abi.encodePacked(pathToChild[i].label)), PARENT_FUSES_TO_BURN, parentExpiry);
+						ensTokenWrapper.setChildFuses(pathToChild[i - 1].node, keccak256(abi.encodePacked(pathToChild[i].label)), PARENT_FUSES_TO_BURN, MAX_UINT64);
 					}
 				}
 			}

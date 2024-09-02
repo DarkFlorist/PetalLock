@@ -7,7 +7,8 @@
 		"@types/node": "20.10.6",
 		"@zoltu/file-copier": "3.0.0",
 		"better-typescript-lib": "2.6.0",
-		"typescript": "5.4.5"
+		"typescript": "5.4.5",
+		"funtypes": "5.1.0"
 	},
 	"dependencies": {
 		"@preact/signals": "1.2.2",
@@ -18,6 +19,7 @@
 	"scripts": {
 		"setup": "npm ci --ignore-scripts && npm run contracts && npm run vendor && npm run build",
 		"contracts": "cd solidity && npm ci --ignore-scripts && npm run compile",
+		"test": "tsc && node app/js/tests/test.js",
 		"build": "tsc",
 		"watch": "tsc --watch",
 		"serve": "npx http-server ./app",

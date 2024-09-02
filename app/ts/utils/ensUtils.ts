@@ -212,32 +212,32 @@ export const isPetalLockDeployed = async (account: AccountAddress | undefined) =
 	return deployedBytecode === expectedDeployedBytecode
 }
 
+export const deployPetalLockTransaction = () => {
+	const bytecode: `0x${ string }` = `0x${ petalLockContractArtifact.contracts['PetalLock.sol'].PetalLock.evm.bytecode.object }`
+	return { to: proxyDeployerAddress, data: bytecode } as const
+}
+
 export const deployPetalLock = async (account: AccountAddress) => {
 	if (await isPetalLockDeployed(account)) throw new Error('already deployed')
 	await ensureProxyDeployerDeployed(account)
 	const client = createWriteClient(account)
-	const bytecode: `0x${ string }` = `0x${ petalLockContractArtifact.contracts['PetalLock.sol'].PetalLock.evm.bytecode.object }`
-	const hash = await client.sendTransaction({ to: proxyDeployerAddress, data: bytecode })
+	const hash = await client.sendTransaction(deployPetalLockTransaction())
 	return await client.waitForTransactionReceipt({ hash })
 }
 
-export const callPetalLock = async (account: AccountAddress, domainInfos: DomainInfo[], contentHash: string, resolutionAddress: string) => {
-	const client = createWriteClient(account)
-	const petalLockAddress = getPetalLockAddress()
-	const subdomainRouteNames = domainInfos.map((x) => x.subDomain)
+export const getPetalLockUseTransaction = (petalLockAddress: AccountAddress, account: AccountAddress, subdomainRouteNames: string[], ownedTokens: bigint[], contentHash: string, resolutionAddress: string) => {
 	const labels = subdomainRouteNames.map((p) => {
 		const [label] = p.split('.')
 		if (label === undefined) throw new Error('Not a valid ENS sub domain')
 		return label
 	})
 	const subdomainRouteNodes = subdomainRouteNames.map((pathPart) => namehash(pathPart))
-	const decodedContentHash = contentHash === '' ? '0x' : tryEncodeContentHash(contentHash)
-	if (decodedContentHash === undefined) throw new Error('Unable to decode content hash')
+	const encodedContentHash = contentHash === '' ? '0x' : tryEncodeContentHash(contentHash)
+	if (encodedContentHash === undefined) throw new Error('Unable to decode content hash')
 	if (resolutionAddress.length > 0 && !isAddress(resolutionAddress, { strict: true })) throw new Error('Resolution address is not valid')
-	const decodedResolutionAddress = resolutionAddress === '' ? '0x0' : getAddress(resolutionAddress)
+	const decodedResolutionAddress = resolutionAddress === '' ? '0x0000000000000000000000000000000000000000' : getAddress(resolutionAddress)
 
 	if (subdomainRouteNodes[0] === undefined) throw new Error('Not a valid ENS sub domain')
-	const ownedTokens = domainInfos.filter((info) => info.registered).map((info) => BigInt(info.nameHash))
 
 	const subDomainLabelNode = [
 		{ name: 'label', type: 'string' },
@@ -257,14 +257,23 @@ export const callPetalLock = async (account: AccountAddress, domainInfos: Domain
 		{ name: 'pathToChild', components: subDomainLabelNode, type: 'tuple[]' },
 		{ name: 'contenthash', type: 'bytes' },
 		{ name: 'resolutionAddress', type: 'address' },
-	], [pathToChild, decodedContentHash, decodedResolutionAddress])
-	const hash = await client.writeContract({
+	], [pathToChild, encodedContentHash, decodedResolutionAddress])
+	return {
 		chain: mainnet,
 		account,
 		address: ENS_TOKEN_WRAPPER,
 		abi: ENS_WRAPPER_ABI, 
 		functionName: 'safeBatchTransferFrom',
 		args: [account, petalLockAddress, ownedTokens, ownedTokens.map(() => 1n), data]
-	})
+	} as const
+}
+
+export const callPetalLock = async (account: AccountAddress, domainInfos: DomainInfo[], contentHash: string, resolutionAddress: string) => {
+	const client = createWriteClient(account)
+	const petalLockAddress = getPetalLockAddress()
+	const subdomainRouteNames = domainInfos.map((x) => x.subDomain)
+	const ownedTokens = domainInfos.filter((info) => info.registered).map((info) => BigInt(info.nameHash))
+	const write = getPetalLockUseTransaction(petalLockAddress, account, subdomainRouteNames, ownedTokens, contentHash, resolutionAddress)
+	const hash = await client.writeContract(write)
 	return await client.waitForTransactionReceipt({ hash })
 }
