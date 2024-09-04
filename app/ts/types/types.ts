@@ -14,6 +14,7 @@ export type DomainInfo = {
 	contentHash: `0x${ string }`,
 	manager: `0x${ string }`,
 	resolutionAddress: `0x${ string }`,
+	approved: `0x${ string }`,
 }
 
 export type FinalChildChecks = {
@@ -21,7 +22,7 @@ export type FinalChildChecks = {
 	exists: boolean,
 	isWrapped: boolean,
 	fusesBurned: boolean,
-	ownershipBurned: boolean,
+	ownershipOpenRenewalContract: boolean,
 	immutable: boolean,
 	contentHashIsSet: boolean,
 	domainInfo: DomainInfo,
@@ -34,6 +35,7 @@ export type ParentChecks = {
 	isWrapped: boolean,
 	fusesBurned: boolean,
 	domainInfo: DomainInfo,
+	openRenewalContractIsApproved: boolean,
 }
 
 export type CheckBoxes = readonly (FinalChildChecks | ParentChecks)[]

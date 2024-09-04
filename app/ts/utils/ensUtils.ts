@@ -5,7 +5,7 @@ import 'viem/window'
 import { ENS_REGISTRY_ABI } from '../abi/ens_registry_abi.js'
 import { splitEnsStringToSubdomainPath } from './utilities.js'
 import { ENS_PUBLIC_RESOLVER_ABI } from '../abi/ens_public_resolver_abi.js'
-import { burnAddresses, CAN_DO_EVERYTHING, ENS_ETHEREUM_NAME_SERVICE, ENS_FLAGS, ENS_PUBLIC_RESOLVER, ENS_REGISTRY_WITH_FALLBACK, ENS_TOKEN_WRAPPER } from './constants.js'
+import { CAN_DO_EVERYTHING, ENS_ETHEREUM_NAME_SERVICE, ENS_FLAGS, ENS_PUBLIC_RESOLVER, ENS_REGISTRY_WITH_FALLBACK, ENS_TOKEN_WRAPPER } from './constants.js'
 import { AccountAddress, DomainInfo, EnsFuseName } from '../types/types.js'
 import { ENS_ETHEREUM_NAME_SERVICE_ABI } from '../abi/ens_ethereum_name_service_abi.js'
 import { tryEncodeContentHash } from './contenthash.js'
@@ -129,6 +129,13 @@ const getDomainInfo = async (account: AccountAddress | undefined, nameHash: `0x$
 		args: [nameHash]
 	})
 
+	const approvedPromise = client.readContract({
+		address: ENS_TOKEN_WRAPPER,
+		abi: ENS_WRAPPER_ABI, 
+		functionName: 'getApproved',
+		args: [BigInt(nameHash)]
+	})
+
 	const registeryOwnerPromise = getRegistryOwner()
 	const data = await dataPromise
 	return {
@@ -145,6 +152,7 @@ const getDomainInfo = async (account: AccountAddress | undefined, nameHash: `0x$
 		manager: await managerPromise,
 		subDomain,
 		resolutionAddress: await resolutionAddressPromise,
+		approved: await approvedPromise
 	}
 }
 
@@ -159,11 +167,14 @@ export const getDomainInfos = async (account: AccountAddress | undefined, name: 
 	}))
 }
 
-export const parentFuseToBurn = 'Cannot Unwrap Name' as const
+export const parentFusesToBurn = ['Cannot Unwrap Name', 'Cannot Approve'] as const
 
 export const doWeNeedToBurnParentFuses = (parentInfo: DomainInfo) => {
 	if (!parentInfo.isWrapped) return true
-	return !parentInfo.fuses.includes(parentFuseToBurn)
+	for (const requiredFuse of parentFusesToBurn) {
+		if (!parentInfo.fuses.includes(requiredFuse)) return true
+	}
+	return false
 }
 
 export const mandatoryChildFusesToBurn = ['Parent Domain Cannot Control'] as const
@@ -183,8 +194,8 @@ export const isValidEnsSubDomain = (subdomain: string): boolean => {
 	return ensRegex.test(subdomain)
 }
 
-export const isChildOwnershipBurned = (childInfo: DomainInfo) => {
-	return burnAddresses.map((b) => BigInt(b)).includes(BigInt(childInfo.owner)) && childInfo.isWrapped
+export const isChildOwnershipOwnedByOpenRenewManager = (childInfo: DomainInfo) => {
+	return BigInt(getOpenRenewalManagerAddress()) === BigInt(childInfo.owner) && childInfo.isWrapped
 }
 
 export const proxyDeployerAddress = `0x7a0d94f55792c434d74a40883c6ed8545e406d12`
@@ -204,12 +215,29 @@ export function getPetalLockAddress() {
 	return getContractAddress({ bytecode, from: proxyDeployerAddress, opcode: 'CREATE2', salt: numberToBytes(0) })
 }
 
-export const isPetalLockDeployed = async (account: AccountAddress | undefined) => {
+export function getOpenRenewalManagerAddress() {
+	const bytecode: `0x${ string }` = `0x${ petalLockContractArtifact.contracts['OpenRenewalManager.sol'].OpenRenewalManager.evm.bytecode.object }`
+	return getContractAddress({ bytecode, from: proxyDeployerAddress, opcode: 'CREATE2', salt: numberToBytes(0) })
+}
+
+const isOpenRenewalManagerDeployed = async (account: AccountAddress | undefined) => {
 	const wallet = createReadClient(account)
-	const expectedDeployedBytecode: `0x${ string }` = `0x${ petalLockContractArtifact.contracts['PetalLock.sol'].PetalLock.evm.deployedBytecode.object }`
+	const expectedDeployedBytecode: `0x${ string }` = `0x${ petalLockContractArtifact.contracts['OpenRenewalManager.sol'].OpenRenewalManager.evm.deployedBytecode.object }`
+	const address = getOpenRenewalManagerAddress()
+	const deployedBytecode = await wallet.getCode({ address })
+	return deployedBytecode === expectedDeployedBytecode
+}
+
+const isPetalLockDeployed = async (account: AccountAddress | undefined) => {
+	const wallet = createReadClient(account)
+	const expectedDeployedBytecode: `0x${ string }` = `0x${ petalLockContractArtifact.contracts['OpenRenewalManager.sol'].OpenRenewalManager.evm.deployedBytecode.object }`
 	const address = getPetalLockAddress()
 	const deployedBytecode = await wallet.getCode({ address })
 	return deployedBytecode === expectedDeployedBytecode
+}
+
+export const isPetalLockAndOpenRenewalManagerDeployed = async (account: AccountAddress | undefined) => {
+	return await isOpenRenewalManagerDeployed(account) && await isPetalLockDeployed(account)
 }
 
 export const deployPetalLockTransaction = () => {
@@ -217,12 +245,25 @@ export const deployPetalLockTransaction = () => {
 	return { to: proxyDeployerAddress, data: bytecode } as const
 }
 
-export const deployPetalLock = async (account: AccountAddress) => {
-	if (await isPetalLockDeployed(account)) throw new Error('already deployed')
+export const deployOpenRenewalManagerTransaction = () => {
+	const bytecode: `0x${ string }` = `0x${ petalLockContractArtifact.contracts['OpenRenewalManager.sol'].OpenRenewalManager.evm.bytecode.object }`
+	return { to: proxyDeployerAddress, data: bytecode } as const
+}
+
+export const deployPetalLockAndRenewalManager = async (account: AccountAddress) => {
+	const openRenewalManagerDeployed = await isOpenRenewalManagerDeployed(account)
+	const petalLockDeployed = await isPetalLockDeployed(account)
+	if (openRenewalManagerDeployed && petalLockDeployed) throw new Error('already deployed')
 	await ensureProxyDeployerDeployed(account)
 	const client = createWriteClient(account)
-	const hash = await client.sendTransaction(deployPetalLockTransaction())
-	return await client.waitForTransactionReceipt({ hash })
+	if (!openRenewalManagerDeployed) {
+		const hash = await client.sendTransaction(deployOpenRenewalManagerTransaction())
+		await client.waitForTransactionReceipt({ hash })
+	}
+	if (!petalLockDeployed) {
+		const hash = await client.sendTransaction(deployPetalLockTransaction())
+		await client.waitForTransactionReceipt({ hash })
+	}
 }
 
 export const getPetalLockUseTransaction = (petalLockAddress: AccountAddress, account: AccountAddress, subdomainRouteNames: string[], ownedTokens: bigint[], contentHash: string, resolutionAddress: string) => {

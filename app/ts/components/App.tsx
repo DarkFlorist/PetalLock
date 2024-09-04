@@ -1,6 +1,6 @@
 import { Signal, useSignal } from '@preact/signals'
 import { useEffect, useRef } from 'preact/hooks'
-import { requestAccounts, isValidEnsSubDomain, doWeNeedToBurnParentFuses, doWeNeedToBurnChildFuses, isChildOwnershipBurned, getAccounts, getDomainInfos, isPetalLockDeployed } from '../utils/ensUtils.js'
+import { requestAccounts, isValidEnsSubDomain, doWeNeedToBurnParentFuses, doWeNeedToBurnChildFuses, isChildOwnershipOwnedByOpenRenewManager, getAccounts, getDomainInfos, isPetalLockAndOpenRenewalManagerDeployed, getOpenRenewalManagerAddress } from '../utils/ensUtils.js'
 import { BigSpinner } from './Spinner.js'
 import { ensureError } from '../utils/utilities.js'
 import { AccountAddress, CheckBoxes, DomainInfo, FinalChildChecks, ParentChecks } from '../types/types.js'
@@ -32,7 +32,7 @@ export function App() {
 	const errorString = useOptionalSignal<string>(undefined)
 	const loadingAccount = useSignal<boolean>(false)
 	const isWindowEthereum = useSignal<boolean>(true)
-	const petalLockDeployed = useSignal<boolean | undefined>(undefined)
+	const areContractsDeployed = useSignal<boolean | undefined>(undefined)
 	const account = useSignal<AccountAddress | undefined>(undefined)
 	const chainId = useSignal<number | undefined>(undefined)
 	const pathInfo = useOptionalSignal<DomainInfo[]>(undefined)
@@ -69,14 +69,14 @@ export function App() {
 			immutable.value = false
 			checkBoxes.deepValue = newPathInfo.map((currElement, index): FinalChildChecks | ParentChecks => {
 				if (index === newPathInfo.length - 1) {
-					immutable.value = currElement.isWrapped && !doWeNeedToBurnChildFuses(currElement) && isChildOwnershipBurned(currElement)
+					immutable.value = currElement.isWrapped && !doWeNeedToBurnChildFuses(currElement) && isChildOwnershipOwnedByOpenRenewManager(currElement)
 					return {
 						type: 'finalChild' as const,
 						exists: currElement.registered,
 						isWrapped: currElement.isWrapped,
 						fusesBurned: !doWeNeedToBurnChildFuses(currElement),
-						ownershipBurned: isChildOwnershipBurned(currElement),
-						immutable: currElement.isWrapped && !doWeNeedToBurnChildFuses(currElement) && isChildOwnershipBurned(currElement),
+						ownershipOpenRenewalContract: isChildOwnershipOwnedByOpenRenewManager(currElement),
+						immutable: currElement.isWrapped && !doWeNeedToBurnChildFuses(currElement) && isChildOwnershipOwnedByOpenRenewManager(currElement),
 						contentHashIsSet: currElement.contentHash !== '0x',
 						domainInfo: currElement,
 						resolutionAddressIsSet: BigInt(currElement.resolutionAddress) !== 0n, 
@@ -88,6 +88,7 @@ export function App() {
 					isWrapped: currElement.isWrapped,
 					fusesBurned: !doWeNeedToBurnParentFuses(currElement),
 					domainInfo: currElement,
+					openRenewalContractIsApproved: currElement.approved === getOpenRenewalManagerAddress()
 				}
 			})
 			errorString.value = undefined
@@ -144,7 +145,7 @@ export function App() {
 				setError(e)
 			} finally {
 				loadingAccount.value = false
-				petalLockDeployed.value = await isPetalLockDeployed(account.value)
+				areContractsDeployed.value = await isPetalLockAndOpenRenewalManagerDeployed(account.value)
 			}
 		}
 		fetchAccount()
@@ -204,7 +205,7 @@ export function App() {
 				checkBoxes = { checkBoxes }
 				updateInfos = { updateInfos }
 				creating = { creating }
-				petalLockDeployed = { petalLockDeployed }
+				areContractsDeployed = { areContractsDeployed }
 			/>
 		</div>
 		<div class = 'text-white/50 text-center'>

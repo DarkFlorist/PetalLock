@@ -18,7 +18,7 @@
 	},
 	"scripts": {
 		"setup": "npm ci --ignore-scripts && npm run contracts && npm run vendor && npm run build",
-		"contracts": "cd solidity && npm ci --ignore-scripts && npm run compile",
+		"contracts": "cd solidity && npm ci --ignore-scripts && npm run compile && cd .. && npm run vendor",
 		"test": "tsc && node app/js/tests/test.js",
 		"build": "tsc",
 		"watch": "tsc --watch",
