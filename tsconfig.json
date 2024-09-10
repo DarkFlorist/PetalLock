@@ -1,6 +1,6 @@
 {
 	"compilerOptions": {
-		"target": "ES2022",
+		"target": "ESNext",
 		"module": "ES2022",
 		"moduleResolution": "bundler",
 		"rootDir": "app/ts",
@@ -24,13 +24,13 @@
 
 		"jsx": "react-jsx",
 		"jsxImportSource": "preact",
-		"lib": ["ES2022", "DOM"],
+		"lib": ["ESNext", "DOM"],
 		"typeRoots": [ "./node_modules/@types" ],
 		// add any @types here, empty array instead of default to prevent @types/node from being picked up
 		"types": [],
 	},
 	"include": [
 		"./app/ts/**/*.ts",
-		"./app/ts/**/*.tsx",
+		"./app/ts/**/*.tsx", "app/ts/tests/test.mts",
 	],
 }

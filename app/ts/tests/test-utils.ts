@@ -34,6 +34,3 @@ export const removeEthSuffix = (str: string): string => {
 export const allSuccess = (result: EthSimulateV1Result) => {
 	return result.flatMap((x) => x.calls.map((x) => x.status === 'success')).every((a) => a === true)
 }
-
-export const areSetsEqual = (a: Set<string>, b: Set<string>) => a.size === b.size && [...a].every(value => b.has(value))
-

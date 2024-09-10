@@ -4,10 +4,10 @@
 	"license": "Unlicense",
 	"type": "module",
 	"devDependencies": {
-		"@types/node": "20.10.6",
+		"@types/node": "22.5.4",
 		"@zoltu/file-copier": "3.0.0",
-		"better-typescript-lib": "2.6.0",
-		"typescript": "5.4.5",
+		"better-typescript-lib": "2.8.0",
+		"typescript": "5.5.4",
 		"funtypes": "5.1.0"
 	},
 	"dependencies": {

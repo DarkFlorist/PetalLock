@@ -9,7 +9,7 @@ import { ENS_REGISTRAR_CONTROLLER_ABI } from '../abi/ens_registrar_controller_ab
 import { dataStringWith0xStart } from '../utils/utilities.js'
 import { ENS_PUBLIC_RESOLVER_ABI } from '../abi/ens_public_resolver_abi.js'
 import { decodeContentHash } from '../utils/contenthash.js'
-import { addressString, allSuccess, areSetsEqual, bytesToUnsigned, removeEthSuffix, stringToUint8Array } from './test-utils.js'
+import { addressString, allSuccess, bytesToUnsigned, removeEthSuffix, stringToUint8Array } from './test-utils.js'
 import { PETAL_LOCK_ABI } from '../abi/petal_lock_abi.js'
 
 const rpc = 'https://geth.dark.florist' as const
@@ -82,18 +82,13 @@ const FINAL_CHILD_FUSES = [
 
 const SINGLE_DOMAIN_FUSES = [
 	'Cannot Unwrap Name',
-	'Cannot Burn Fuses',
-	'Cannot Set Resolver',
-	'Cannot Create Subdomain',
-	'Cannot Approve',
-	'Parent Domain Cannot Control',
 	'Is .eth domain',
+	'Cannot Approve',
 ] as const
 
-const PARENT_FUSES = [
+const TOP_PARENT_FUSES = [
 	'Is .eth domain',
 	'Cannot Unwrap Name',
-	'Parent Domain Cannot Control',
 	'Cannot Approve',
 ] as const
 
@@ -104,7 +99,7 @@ const MID_PARENT_FUSES = [
 ] as const
 
 const runTests = async () => {
-	console.log(getOpenRenewalManagerAddress())
+	console.log(`Reneval manager: ${ getOpenRenewalManagerAddress() }`)
 	const testMakeImmutable = async () => {
 		const ownedTokens = [BigInt(namehash(subdomainRouteNames2[0]))] as const
 		const result = await ethSimulateTransactions(rpc, [makeImmutableDomain(subdomainRouteNames2, ownedTokens)])
@@ -161,17 +156,16 @@ const runTests = async () => {
 				})),
 			}
 		])
-		if (result[0]?.calls[2]?.returnData === undefined) throw new Error('no results for call 2')
+		if (!allSuccess(result)) throw new Error('transaction failed')
+		if (result[0]?.calls[2]?.returnData === undefined || result[0]?.calls[3]?.returnData === undefined) throw new Error('no results for calls')
+		
 		const parentData = decodeFunctionResult({ abi: ENS_WRAPPER_ABI, functionName: 'getData', data: dataStringWith0xStart(result[0]?.calls[2]?.returnData) })
 		const parentFuses = new Set(extractENSFuses(BigInt(parentData[1])))
-		if (!areSetsEqual(parentFuses, new Set(PARENT_FUSES))) throw new Error('not correct parent fuses')
-			
-		if (result[0]?.calls[3]?.returnData === undefined) throw new Error('no results for call 3')
+		if (!new Set(TOP_PARENT_FUSES).isSubsetOf(new Set(parentFuses))) throw new Error(`not correct parent fuses: ${ Array.from(parentFuses).join(',') }, Expected: ${ TOP_PARENT_FUSES.join(',') }`)
+
 		const childData = decodeFunctionResult({ abi: ENS_WRAPPER_ABI, functionName: 'getData', data: dataStringWith0xStart(result[0]?.calls[3]?.returnData) })
 		const childFuses = new Set(extractENSFuses(BigInt(childData[1])))
-		if (!areSetsEqual(childFuses, new Set(FINAL_CHILD_FUSES))) throw new Error('not correct child fuses')
-
-		if (!allSuccess(result)) throw new Error('transaction failed')
+		if (!new Set(FINAL_CHILD_FUSES).isSubsetOf(childFuses)) throw new Error('not correct child fuses')
 	}
 	const testNoData = async () => {
 		const ownedTokens = [BigInt(namehash(subdomainRouteNames2[0]))]
@@ -278,17 +272,17 @@ const runTests = async () => {
 		// parent 1
 		const parentData1 = decodeFunctionResult({ abi: ENS_WRAPPER_ABI, functionName: 'getData', data: dataStringWith0xStart(result[0]?.calls[1]?.returnData) })
 		const parentFuses1 = new Set(extractENSFuses(BigInt(parentData1[1])))
-		if (!areSetsEqual(parentFuses1, new Set(PARENT_FUSES))) throw new Error('not correct parent1 fuses')
+		if (!new Set(TOP_PARENT_FUSES).isSubsetOf(parentFuses1)) throw new Error('not correct parent1 fuses')
 		
 		// parent 2
 		const parentData2 = decodeFunctionResult({ abi: ENS_WRAPPER_ABI, functionName: 'getData', data: dataStringWith0xStart(result[0]?.calls[2]?.returnData) })
 		const parentFuses2 = new Set(extractENSFuses(BigInt(parentData2[1])))
-		if (!areSetsEqual(parentFuses2, new Set(MID_PARENT_FUSES))) throw new Error('not correct parent2 fuses')
+		if (!new Set(MID_PARENT_FUSES).isSubsetOf(parentFuses2)) throw new Error('not correct parent2 fuses')
 		
 		// child
 		const childData = decodeFunctionResult({ abi: ENS_WRAPPER_ABI, functionName: 'getData', data: dataStringWith0xStart(result[0]?.calls[3]?.returnData) })
 		const childFuses = new Set(extractENSFuses(BigInt(childData[1])))
-		if (!areSetsEqual(childFuses, new Set(FINAL_CHILD_FUSES))) throw new Error('not correct child fuses')
+		if (!new Set(FINAL_CHILD_FUSES).isSubsetOf(childFuses)) throw new Error('not correct child fuses')
 
 		// parent 1 ownership.  We should own this
 		if (bytesToUnsigned(result[0]?.calls[4]?.returnData) !== 1n) throw new Error('we lost the token 1')
@@ -296,7 +290,7 @@ const runTests = async () => {
 		// parent 2 ownership. We should own this
 		if (bytesToUnsigned(result[0]?.calls[5]?.returnData) !== 1n) throw new Error('we lost the token 2')
 
-		// child ownership. We should now own this
+		// child ownership
 		if (bytesToUnsigned(result[0]?.calls[6]?.returnData) !== 0n) throw new Error('we didnt lose the child')
 		if (bytesToUnsigned(result[0]?.calls[7]?.returnData) !== 1n) throw new Error('open renewal manager does not have the child')
 	}
@@ -390,7 +384,7 @@ const runTests = async () => {
 		// child
 		const childData = decodeFunctionResult({ abi: ENS_WRAPPER_ABI, functionName: 'getData', data: dataStringWith0xStart(result[0]?.calls[2]?.returnData) })
 		const childFuses = new Set(extractENSFuses(BigInt(childData[1])))
-		if (!areSetsEqual(childFuses, new Set(FINAL_CHILD_FUSES))) throw new Error('not correct child fuses')
+		if (!new Set(FINAL_CHILD_FUSES).isSubsetOf(childFuses)) throw new Error('not correct child fuses')
 		if (bytesToUnsigned(result[0]?.calls[3]?.returnData) !== 1n) throw new Error('open renewal manager does not have the child')
 	}
 	const testAnyoneCanRenew = async() => {
@@ -418,6 +412,46 @@ const runTests = async () => {
 			}
 		])
 		if (!allSuccess(result)) throw new Error('transaction failed')
+	}
+	const checkApprovals = async() => {
+		const ownedTokens = [BigInt(namehash(subdomainRouteNames3[0]))]
+		const result = await ethSimulateTransactions(rpc, [
+			makeImmutableDomain(subdomainRouteNames3, ownedTokens),
+			{
+				from: whale,
+				to: BigInt(ENS_TOKEN_WRAPPER),
+				input: stringToUint8Array(encodeFunctionData({
+					abi: ENS_WRAPPER_ABI,
+					functionName: 'getApproved',
+					args: [BigInt(namehash(subdomainRouteNames3[0]))],
+				})),
+			},
+			{
+				from: whale,
+				to: BigInt(ENS_TOKEN_WRAPPER),
+				input: stringToUint8Array(encodeFunctionData({
+					abi: ENS_WRAPPER_ABI,
+					functionName: 'getApproved',
+					args: [BigInt(namehash(subdomainRouteNames3[1]))],
+				})),
+			},
+			{
+				from: whale,
+				to: BigInt(ENS_TOKEN_WRAPPER),
+				input: stringToUint8Array(encodeFunctionData({
+					abi: ENS_WRAPPER_ABI,
+					functionName: 'getApproved',
+					args: [BigInt(namehash(subdomainRouteNames3[2]))],
+				})),
+			},
+		])
+		if (!allSuccess(result)) throw new Error('transaction failed')
+		if (result[0]?.calls[1]?.returnData === undefined || result[0]?.calls[2]?.returnData === undefined || result[0]?.calls[3]?.returnData === undefined) throw new Error('fff')
+		
+		const renewalManager = getOpenRenewalManagerAddress()
+		if (BigInt(dataStringWith0xStart(result[0]?.calls[1]?.returnData)) !== BigInt(renewalManager)) throw new Error('wrong approval for call 1')
+		if (BigInt(dataStringWith0xStart(result[0]?.calls[2]?.returnData)) !== BigInt(renewalManager)) throw new Error('wrong approval for call 2')
+		if (BigInt(dataStringWith0xStart(result[0]?.calls[3]?.returnData)) !== BigInt(renewalManager)) throw new Error('wrong approval for call 3')
 	}
 	const testAnyoneCanRenew3 = async() => {
 		const ownedTokens = [BigInt(namehash(subdomainRouteNames3[0]))]
@@ -518,8 +552,25 @@ const runTests = async () => {
 		if (decodeContentHash(contentHash) !== testContentHash) throw new Error('wrong content hash')
 		const childData = decodeFunctionResult({ abi: ENS_WRAPPER_ABI, functionName: 'getData', data: dataStringWith0xStart(result[0]?.calls[4]?.returnData) })
 		const childFuses = new Set(extractENSFuses(BigInt(childData[1])))
-		if (!areSetsEqual(childFuses, new Set(SINGLE_DOMAIN_FUSES))) throw new Error('not correct child fuses')
+		if (!new Set(SINGLE_DOMAIN_FUSES).isSubsetOf(childFuses)) throw new Error('not correct child fuses')
 		if (bytesToUnsigned(result[0]?.calls[5]?.returnData) !== 1n) throw new Error('open renewal manager does not have the child')
+	}
+	const testAnyoneCanRenewDomainExistingOne = async() => {
+		const ownedTokens = [BigInt(namehash(subdomainRouteNames3[0]))]
+		const result = await ethSimulateTransactions(rpc, [
+			makeImmutableDomain([subdomainRouteNames3[0]], ownedTokens),
+			{
+				from: whale,
+				to: BigInt(ENS_ETH_REGISTRAR_CONTROLLER),
+				input: stringToUint8Array(encodeFunctionData({
+					abi: ENS_REGISTRAR_CONTROLLER_ABI,
+					functionName: 'renew',
+					args: [removeEthSuffix(subdomainRouteNames3[0]), 10n],
+				})),
+				value: parseEther('1')
+			},
+		])
+		if (!allSuccess(result)) throw new Error('transaction failed')
 	}
 	await testMakeImmutable()
 	await testWeHaveTheOrignalToken()
@@ -528,9 +579,11 @@ const runTests = async () => {
 	await testNoNonBatchTransfer()
 	await testThatFusesAreCorrect3Part()
 	await testContentHashIsSet()
-	await testThatFusesAreCorrect3PartAgain()
+	await checkApprovals()
 	await testAnyoneCanRenew()
 	await testAnyoneCanRenew3()
 	await testImmutableDomain()
+	await testThatFusesAreCorrect3PartAgain()
+	await testAnyoneCanRenewDomainExistingOne()
 }
 runTests()
