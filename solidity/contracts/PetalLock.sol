@@ -193,6 +193,6 @@ contract PetalLock {
 	
 	// only ensRegistrarController refunds eth to us
 	receive() external payable  {
-		require(msg.sender == ENS_ETH_REGISTRAR_CONTROLLER, 'PetalLock: do not send to PetalLock');
+		require(msg.sender == ENS_ETH_REGISTRAR_CONTROLLER, 'PetalLock: do not send ETH to PetalLock');
 	}
 }
