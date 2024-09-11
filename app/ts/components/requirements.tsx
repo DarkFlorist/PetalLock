@@ -1,12 +1,13 @@
 import { computed, Signal } from '@preact/signals'
 import { AccountAddress, CheckBoxes, FinalChildChecks, ParentChecks } from '../types/types.js'
 import { ENS_TOKEN_WRAPPER } from '../utils/constants.js'
-import { callPetalLock, childFusesToBurn, deployPetalLockAndRenewalManager, getOpenRenewalManagerAddress, parentFusesToBurn } from '../utils/ensUtils.js'
+import { callPetalLock, childFusesToBurn, deployPetalLockAndRenewalManager, getOpenRenewalManagerAddress, parentFusesToBurn, renewDomainByYear, renewDomainToMax } from '../utils/ensUtils.js'
 import { isSameAddress } from '../utils/utilities.js'
 import { OptionalSignal } from './PreactUtils.js'
 import { isValidContentHashString } from '../utils/contenthash.js'
 import { Spinner } from './Spinner.js'
 import { isAddress } from 'viem'
+import { YearPicker } from './YearPicker.js'
 
 interface SwitchAddressProps {
 	account: Signal<AccountAddress | undefined>
@@ -102,9 +103,11 @@ interface CreateProps {
 	updateInfos: (showLoading: boolean) => Promise<void>
 	creating: Signal<boolean>
 	areContractsDeployed: Signal<boolean | undefined>
+	extendYear: Signal<number>
+	extending: Signal<boolean>
 }
 
-export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos, immutable, handleContentHashInput, handleResolutionAddressInput, account, checkBoxes, updateInfos, creating, areContractsDeployed }: CreateProps) => {
+export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos, immutable, handleContentHashInput, handleResolutionAddressInput, account, checkBoxes, updateInfos, creating, areContractsDeployed, extendYear, extending }: CreateProps) => {
 	if (checkBoxes.deepValue === undefined) return <></>
 	const subDomain = checkBoxes.deepValue[checkBoxes.deepValue.length -1]?.domainInfo.subDomain
 	if (subDomain === undefined) throw new Error('missing subdomain')
@@ -122,6 +125,7 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 			creating.value = false
 		}
 	}
+
 	const deploy = async () => {
 		const acc = account.peek()
 		if (acc === undefined) throw new Error('missing account')
@@ -130,9 +134,34 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 		areContractsDeployed.value = true
 	}
 	
+	const renewByYear = async () => {
+		const acc = account.peek()
+		if (acc === undefined) throw new Error('missing account')
+		if (checkBoxes.deepValue === undefined) return
+		try {
+			extending.value = true
+			await renewDomainByYear(acc, extendYear.value, checkBoxes.deepValue.map((value) => value.domainInfo))
+			await updateInfos(false)
+		} finally {
+			extending.value = false
+		}
+	}
+
+	const renewToMax = async () => {
+		const acc = account.peek()
+		if (acc === undefined) throw new Error('missing account')
+		if (checkBoxes.deepValue === undefined) return
+		try {
+			extending.value = true
+			await renewDomainToMax(acc, checkBoxes.deepValue.map((value) => value.domainInfo))
+			await updateInfos(false)
+		} finally {
+			extending.value = false
+		}
+	}
+
 	const signingAddress = computed(() => {
 		if (checkBoxes.deepValue === undefined) return undefined
-		
 		return checkBoxes.deepValue[0]?.domainInfo.owner
 	})
 
@@ -161,6 +190,14 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 		if (contentHashInput.value.length === 0 && validResolutionAddress.value) return true
 		if (validContenthash.value && validResolutionAddress.value) return true
 		return false
+	})
+
+	const twoLevelDomainExpiryBiggerThanLowestLevelExpiry = computed(() => {
+		if (checkBoxes.deepValue === undefined) return false
+		const first = checkBoxes.deepValue[0]
+		const last = checkBoxes.deepValue[checkBoxes.deepValue.length - 1]
+		if (first === undefined || last == undefined) return false
+		return first.domainInfo.expiry !== last.domainInfo.expiry
 	})
 
 	return <>
@@ -197,7 +234,22 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 				<p class = 'error-component' style = 'width: 100%; margin-left: 10px; text-align: center;'> PetalLock contract is not deployed. </p>
 				<button class = 'button is-primary' onClick = { deploy }> Deploy PetalLock contract</button>
 			</> : <></> }
-			{ immutable.value ? <></> : <>
+			{ immutable.value ? <div class = 'extend-dialog'>
+				<p style = 'white-space: nowrap; margin: 0; font-size: 24px; padding-bottom: 10px; justify-self: center;'>{ `Renew ${ subDomain }` }</p>
+				<div style = 'justify-content: center;'>
+					<p style = 'font-size: 24px;'> Renew by&nbsp;</p> <YearPicker year = { extendYear }/> <p style = 'font-size: 24px;'>&nbsp;years </p>
+					<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { extending.value } onClick = { renewByYear }> Renew { extending.value ? <Spinner/> : <></> }</button>
+				</div>
+				{ !twoLevelDomainExpiryBiggerThanLowestLevelExpiry.value || checkBoxes.deepValue[0] === undefined ? <></> : <>
+					<div style = 'justify-content: center; font-size: 24px;'>
+						<p> OR </p>
+					</div>
+					<div style = 'justify-content: center;'>
+						<p style = 'font-size: 24px;' >{ `Renew without renewing ${ checkBoxes.deepValue[0]?.domainInfo.subDomain }` }</p>
+						<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { extending.value } onClick = { renewToMax }> { `Renew to ${ new Date(Number(checkBoxes.deepValue[0].domainInfo.expiry) * 1000).toISOString().substring(0, 10) }`} { extending.value ? <Spinner/> : <></> }</button>
+					</div>
+				</> }
+			</div> : <>
 				<div style = 'padding: 10px; display: block;'>
 					{ domainExistIssue.value === undefined ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { domainExistIssue.value } </p> }
 					<SwitchAddress requirementsMet = { loadingInfos.value } account = { account } signingAddress = { signingAddress }/>

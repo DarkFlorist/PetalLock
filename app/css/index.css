@@ -253,3 +253,71 @@ button:disabled, button[disabled] {
 	border-radius: 5px;
 	padding: 10px;
 }
+
+.year-selector {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	border-bottom: 1px solid #D5DCE6;
+	background-color: #fff;
+	border-radius: 5px;
+	font-size: 30px;
+}
+.year-selector-counter {
+	position: relative;
+	width: 1em;
+	height: 1em;
+	color: #333C48;
+	text-align: center;
+	overflow: hidden;
+}
+
+.year-selector-counter-input {
+	width: 100%;
+	height: 1em;
+	margin: 0;
+	padding: 0;
+	position: relative;
+	z-index: 2;
+	box-shadow: none;
+	outline: none;
+	border: none;
+	color: #333C48;
+	font-size: 30px;
+	line-height: 1em;
+	text-align: center;
+}
+
+.year-selector-button {
+	height: 1em;
+	width: 1em;
+	line-height: 1em;
+	text-align: center;
+	color: #fff;
+	cursor: pointer;
+	background-color: #710cd7;
+	display: block;
+}
+.year-selector-button:hover {
+	background-color: #90a2b0;
+}
+.year-selector-button:active {
+	background-color: #778996;
+}
+.year-selector-button-decrement {
+	border-radius: 5px 0 0 5px;
+}
+.year-selector-button-increment {
+	border-radius: 0 5px 5px 0;
+}
+
+.extend-dialog {
+	display: grid;
+	grid-template-columns: auto;
+	border: 2px solid #ccc;
+	border-radius: 25px;
+	padding: 10px;
+	padding-bottom: 20px;
+	margin-top: 20px;
+	width: 100%;
+}

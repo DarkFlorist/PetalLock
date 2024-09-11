@@ -9,6 +9,7 @@ export type DomainInfo = {
 	fuses: readonly EnsFuseName[],
 	expiry: bigint,
 	label: string,
+	parentDomain: string,
 	subDomain: string,
 	registered: boolean,
 	contentHash: `0x${ string }`,

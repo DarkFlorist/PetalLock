@@ -24,6 +24,7 @@ const dependencyPaths: Dependency[] = [
 	{ packageName: '@noble/curves', subfolderToVendor: 'esm', mainEntrypointFile: 'index.js', alternateEntrypoints: { 'secp256k1': 'secp256k1.js', 'abstract/modular': 'abstract/modular.js', 'abstract/utils': 'abstract/utils.js' } },
 	{ packageName: 'webauthn-p256', subfolderToVendor: '_esm', mainEntrypointFile: 'index.js', alternateEntrypoints: {} },
 	{ packageName: 'multiformats', subfolderToVendor: 'dist/src', mainEntrypointFile: 'index.js', alternateEntrypoints: { 'bases/base32': 'bases/base32.js', 'bases/base36': 'bases/base36.js', 'bases/base58': 'bases/base58.js', 'bases/base64': 'bases/base64.js', 'cid': 'cid.js', 'hashes/digest': 'hashes/digest.js' } },
+	{ packageName: 'funtypes', subfolderToVendor: 'lib', mainEntrypointFile: 'index.mjs', alternateEntrypoints: {} },
 ]
 
 async function vendorDependencies() {

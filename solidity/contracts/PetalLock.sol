@@ -5,6 +5,10 @@ pragma solidity 0.8.26;
 address constant ENS_PUBLIC_RESOLVER = 0x231b0Ee14048e9dCcD1d247744d114a4EB5E8E63;
 address constant ENS_TOKEN_WRAPPER = 0xD4416b13d2b3a9aBae7AcD5D6C2BbDBE25686401;
 address constant ENS_REGISTRY_WITH_FALLBACK = 0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e;
+address constant ENS_ETH_REGISTRAR_CONTROLLER = 0x253553366Da8546fC250F225fe3d25d0C782303b;
+
+// Open Renewal Manager contract address
+address constant OPEN_RENEWAL_MANAGER = 0x2d335A644EC10967D517C367CaF388261223f321;
 
 // ENS Fuses
 uint16 constant CANNOT_UNWRAP = 1;
@@ -22,6 +26,10 @@ uint16 constant CAN_DO_EVERYTHING = 0;
 // interfaces
 interface IEnsRegistryWithFallBack {
 	function recordExists(bytes32 node) external view returns (bool);
+}
+
+interface IENsRegistrarController {
+	function renew(string calldata name, uint256 duration) external payable;
 }
 
 interface IEnsTokenWrapper {
@@ -42,16 +50,23 @@ interface IEnsPublicResolver {
 	function setAddr(bytes32 node, address resolutionAddress) external;
 }
 
+interface IOpenRenewalManager {
+	function extendExpiry(bytes32 parentNode, bytes32 labelhash, uint64 expiry) external returns (uint64);
+}
+
+IOpenRenewalManager constant openRenewalManager = IOpenRenewalManager(OPEN_RENEWAL_MANAGER);
 IEnsRegistryWithFallBack constant ensRegistry = IEnsRegistryWithFallBack(ENS_REGISTRY_WITH_FALLBACK);
 IEnsTokenWrapper constant ensTokenWrapper = IEnsTokenWrapper(ENS_TOKEN_WRAPPER);
 IEnsPublicResolver constant ensPublicResolver = IEnsPublicResolver(ENS_PUBLIC_RESOLVER);
+IENsRegistrarController constant ensRegistrarController = IENsRegistrarController(ENS_ETH_REGISTRAR_CONTROLLER);
 
 // fuse combinations
 uint16 constant TOP_PARENT_FUSES_TO_BURN = CANNOT_UNWRAP | CANNOT_APPROVE;
 uint32 constant PARENT_FUSES_TO_BURN = CANNOT_UNWRAP | PARENT_CANNOT_CONTROL | CANNOT_APPROVE;
 uint32 constant FINAL_CHILD_FUSES_TO_BURN = CANNOT_UNWRAP | CANNOT_BURN_FUSES | CANNOT_SET_RESOLVER | CANNOT_SET_TTL | CANNOT_CREATE_SUBDOMAIN | PARENT_CANNOT_CONTROL | CANNOT_APPROVE | CAN_EXTEND_EXPIRY;
-address constant OPEN_RENEWAL_MANAGER = 0x2d335A644EC10967D517C367CaF388261223f321;
+
 uint64 constant MAX_UINT64 = type(uint64).max;
+uint256 constant ETH_NAME_HASH = 0x93cdeb708b7545dc668eb9280176169d1c33cfd8ed6f04690a0bcc88a93fc4ae; // keccak256(namehash('') + labelhash('eth')) https://docs.ens.domains/resolution/names
 
 // check that tokenId exists in an array
 function exists(uint256 tokenId, SubDomainLabelNode[] memory pathToChild) pure returns (bool) {
@@ -66,7 +81,26 @@ struct SubDomainLabelNode {
 	bytes32 node;
 }
 
+struct BatchExtend { 
+	bytes32 parentNode;
+	string label;
+	uint64 domainExpiry;
+}
+
 contract PetalLock {
+	function batchExtend(BatchExtend[] calldata domainsAndSubDomains) public payable {
+		for (uint256 i = 0; i < domainsAndSubDomains.length; i++) {
+			if (uint256(domainsAndSubDomains[i].parentNode) == ETH_NAME_HASH) {
+				ensRegistrarController.renew{ value: address(this).balance }(domainsAndSubDomains[i].label, domainsAndSubDomains[i].domainExpiry);
+			} else {
+				// sub domains are always extended to the max, so `domainExpiry` paremeter is not obeyed
+				openRenewalManager.extendExpiry(domainsAndSubDomains[i].parentNode, keccak256(abi.encodePacked(domainsAndSubDomains[i].label)), MAX_UINT64);
+			}
+		}
+		(bool sent, bytes memory data) = payable(msg.sender).call{value: address(this).balance}("");
+       	require(sent, 'Failed to send Ether');
+	}
+
 	function makeImmutable(address originalOwner, SubDomainLabelNode[] memory pathToChild, bytes memory contenthash, address resolutionAddress) private {
 		require(ensRegistry.recordExists(pathToChild[0].node), 'PetalLock: The first record need to exist');
 		require(ensTokenWrapper.isWrapped(pathToChild[0].node), 'PetalLock: The first record is not wrapped');
@@ -155,5 +189,10 @@ contract PetalLock {
 		require(contenthash.length != 0 || resolutionAddress != address(0x0), 'PetalLock: Either resolution address or content hash need to be set');
 		makeImmutable(from, pathToChild, contenthash, resolutionAddress);
 		return this.onERC1155BatchReceived.selector;
+	}
+	
+	// only ensRegistrarController refunds eth to us
+	receive() external payable  {
+		require(msg.sender == ENS_ETH_REGISTRAR_CONTROLLER, 'PetalLock: do not send to PetalLock');
 	}
 }
