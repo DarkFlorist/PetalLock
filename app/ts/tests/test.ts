@@ -590,6 +590,23 @@ const runTests = async () => {
 		])
 		if (!allSuccess(result)) throw new Error('transaction failed')
 	}
+	const domainOrderWrong = async () => {
+		const ownedTokens = [BigInt(namehash(subdomainRouteNames2[0]))]
+		const tx = getPetalLockUseTransaction(
+			addressString(petalLockAddress),
+			addressString(ownAddress),
+			[subdomainRouteNames2[1], subdomainRouteNames2[0]],
+			[...ownedTokens],
+			testContentHash,
+			addressString(ownAddress)
+		)
+		const result = await ethSimulateTransactions(rpc, [{
+			from: ownAddress,
+			to: BigInt(ENS_TOKEN_WRAPPER),
+			input: stringToUint8Array(encodeFunctionData(tx))
+		}])
+		if (allSuccess(result)) throw new Error('transaction succeeded while it should fail')
+	}
 	await testMakeImmutable()
 	await testWeHaveTheOrignalToken()
 	await testThatFusesAreCorrect()
@@ -604,5 +621,6 @@ const runTests = async () => {
 	await testThatFusesAreCorrect3PartAgain()
 	await testAnyoneCanRenewDomainExistingOne()
 	await testBatchExtend()
+	await domainOrderWrong()
 }
 runTests()
