@@ -33,3 +33,31 @@ export const ENS_FLAGS = [
 	{ name: 'Can Extend Expiry', value: CAN_EXTEND_EXPIRY },
 	{ name: 'Can Do Everything', value: CAN_DO_EVERYTHING },
 ] as const
+
+export const FINAL_CHILD_FUSES = [
+	'Cannot Unwrap Name',
+	'Cannot Burn Fuses',
+	'Cannot Set Resolver',
+	'Cannot Set Time To Live',
+	'Cannot Create Subdomain',
+	'Cannot Approve',
+	'Parent Domain Cannot Control',
+	'Can Extend Expiry'
+] as const
+
+export const SINGLE_DOMAIN_FUSES = [
+	'Cannot Unwrap Name',
+	'Is .eth domain',
+] as const
+
+export const TOP_PARENT_FUSES = [
+	'Is .eth domain',
+	'Cannot Unwrap Name',
+	'Cannot Approve',
+] as const
+
+export const MID_PARENT_FUSES = [
+	'Cannot Unwrap Name',
+	'Parent Domain Cannot Control',
+	'Cannot Approve',
+] as const

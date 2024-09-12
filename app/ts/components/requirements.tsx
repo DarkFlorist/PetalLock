@@ -1,7 +1,7 @@
 import { computed, Signal } from '@preact/signals'
 import { AccountAddress, CheckBoxes, FinalChildChecks, ParentChecks } from '../types/types.js'
 import { ENS_TOKEN_WRAPPER } from '../utils/constants.js'
-import { callPetalLock, childFusesToBurn, deployPetalLockAndRenewalManager, getOpenRenewalManagerAddress, parentFusesToBurn, renewDomainByYear, renewDomainToMax } from '../utils/ensUtils.js'
+import { callPetalLock, deployPetalLockAndRenewalManager, getOpenRenewalManagerAddress, getRequiredFuses, renewDomainByYear, renewDomainToMax } from '../utils/ensUtils.js'
 import { isSameAddress } from '../utils/utilities.js'
 import { OptionalSignal } from './PreactUtils.js'
 import { isValidContentHashString } from '../utils/contenthash.js'
@@ -23,11 +23,39 @@ export const SwitchAddress = ({ signingAddress, account, requirementsMet }: Swit
 	return <p class = 'paragraph' style = 'color: #b43c42'> { ` - Switch to ${ signingAddress } to sign` } </p>
 }
 
-export const Requirements = ( { checkBoxesArray } : { checkBoxesArray: OptionalSignal<CheckBoxes> }) => {
-	if (checkBoxesArray.deepValue === undefined) return <></>
-	return <div class = 'grid-container-bordered'> { [...checkBoxesArray.deepValue].reverse().map((check) => {
-		if (check.type === 'parent') return <ParentRequirements checkBoxes = { check }/>
-		return <ChildRequirements checkBoxes = { check }/>
+
+export const ChildRequirements = ( { checkBoxes, fuses } : { checkBoxes: FinalChildChecks, fuses: readonly string[] }) => {
+	return <>
+		<p class = 'subdomain-header'>{ checkBoxes.domainInfo.subDomain } </p>
+		<div class = 'grid-container'>
+			<Requirement checked = { checkBoxes.exists } primarytext = { `${ checkBoxes.domainInfo.subDomain } exists` } />
+			<Requirement checked = { checkBoxes.isWrapped } primarytext = { `${ checkBoxes.domainInfo.subDomain } is wrapped` } />
+			<Requirement checked = { checkBoxes.fusesBurned } primarytext = { `${ checkBoxes.domainInfo.subDomain } fuses are burnt` } secondaryText = { `The fuses ${ fuses.map((n) => `"${ n }"`).join(', ') } are burnt` } />
+			<Requirement checked = { checkBoxes.ownershipOpenRenewalContract } primarytext = { `${ checkBoxes.domainInfo.subDomain } is owned by Open Renewal Contract` } secondaryText = 'The ownership of subdomain is moved to an Open Renewal Contract that allows anyone to renew the domain.'/>
+			<Requirement checked = { checkBoxes.contentHashIsSet || checkBoxes.resolutionAddressIsSet } primarytext = { 'Content hash or address is set'} secondaryText = 'Content hash or address should be set for the domain to be useful'/>
+		</div>
+	</>
+}
+
+export const ParentRequirements = ( { checkBoxes, fuses } : { checkBoxes: ParentChecks, fuses: readonly string[] }) => {
+	return <>
+	<p class = 'subdomain-header'>{ checkBoxes.domainInfo.subDomain } </p>
+		<div class = 'grid-container'>
+			<Requirement checked = { checkBoxes.exists } primarytext = { `${ checkBoxes.domainInfo.subDomain } exists` } />
+			<Requirement checked = { checkBoxes.isWrapped } primarytext = { `${ checkBoxes.domainInfo.subDomain } is wrapped` } />
+			<Requirement checked = { checkBoxes.fusesBurned } primarytext = { `${ checkBoxes.domainInfo.subDomain } fuses are burnt` } secondaryText = { `The fuses ${ fuses.map((n) => `"${ n }"`).join(', ') } are burnt` } />
+			<Requirement checked = { checkBoxes.openRenewalContractIsApproved } primarytext = { `${ checkBoxes.domainInfo.subDomain } has approved Open Renewal Contract` } secondaryText = { `Contract ${ getOpenRenewalManagerAddress() } needs to be approved in order for anyone to be able to renew the name.` } />
+		</div>
+	</>
+}
+
+export const Requirements = ({ checkBoxesArray } : { checkBoxesArray: OptionalSignal<CheckBoxes> }) => {
+	const allCheckBoxes = checkBoxesArray.deepValue
+	if (allCheckBoxes === undefined) return <></>
+	return <div class = 'grid-container-bordered'> { [...allCheckBoxes].reverse().map((check, index) => {
+		const fuses = getRequiredFuses(index, allCheckBoxes.map((c) => c.domainInfo))
+		if (check.type === 'parent') return <ParentRequirements checkBoxes = { check } fuses = { fuses }/>
+		return <ChildRequirements checkBoxes = { check } fuses = { fuses }/>
 	}) } </div>
 }
 
@@ -64,31 +92,6 @@ export const Immutable = ( { checkBoxesArray } : { checkBoxesArray: Signal<Check
 		</div>
 		{ checkBoxes.immutable ? <></> : <p style = 'margin: 0px; margin-bottom: 10px; padding-left: 10px;' class = 'requirement'> { checkBoxes.domainInfo.subDomain } should satisfy the following conditions to be immutable: </p> }
 	</div>
-}
-
-export const ChildRequirements = ( { checkBoxes } : { checkBoxes: FinalChildChecks }) => {
-	return <>
-		<p class = 'subdomain-header'>{ checkBoxes.domainInfo.subDomain } </p>
-		<div class = 'grid-container'>
-			<Requirement checked = { checkBoxes.exists } primarytext = { `${ checkBoxes.domainInfo.subDomain } exists` } />
-			<Requirement checked = { checkBoxes.isWrapped } primarytext = { `${ checkBoxes.domainInfo.subDomain } is wrapped` } />
-			<Requirement checked = { checkBoxes.fusesBurned } primarytext = { `${ checkBoxes.domainInfo.subDomain } fuses are burnt` } secondaryText = { `The fuses ${ childFusesToBurn.map((n) => `"${ n }"`).join(', ') } are burnt` } />
-			<Requirement checked = { checkBoxes.ownershipOpenRenewalContract } primarytext = { `${ checkBoxes.domainInfo.subDomain } is owned by Open Renewal Contract` } secondaryText = 'The ownership of subdomain is moved to an Open Renewal Contract that allows anyone to renew the domain.'/>
-			<Requirement checked = { checkBoxes.contentHashIsSet || checkBoxes.resolutionAddressIsSet } primarytext = { 'Content hash or address is set'} secondaryText = 'Content hash or address should be set for the domain to be useful'/>
-		</div>
-	</>
-}
-
-export const ParentRequirements = ( { checkBoxes } : { checkBoxes: ParentChecks }) => {
-	return <>
-	<p class = 'subdomain-header'>{ checkBoxes.domainInfo.subDomain } </p>
-		<div class = 'grid-container'>
-			<Requirement checked = { checkBoxes.exists } primarytext = { `${ checkBoxes.domainInfo.subDomain } exists` } />
-			<Requirement checked = { checkBoxes.isWrapped } primarytext = { `${ checkBoxes.domainInfo.subDomain } is wrapped` } />
-			<Requirement checked = { checkBoxes.fusesBurned } primarytext = { `${ checkBoxes.domainInfo.subDomain } fuses are burnt` } secondaryText = { `The fuses ${ parentFusesToBurn.map((n) => `"${ n }"`).join(', ') } are burnt` } />
-			<Requirement checked = { checkBoxes.openRenewalContractIsApproved } primarytext = { `${ checkBoxes.domainInfo.subDomain } has approved Open Renewal Contract` } secondaryText = { `Contract ${ getOpenRenewalManagerAddress() } needs to be approved in order for anyone to be able to renew the name.` } />
-		</div>
-	</>
 }
 
 interface CreateProps {

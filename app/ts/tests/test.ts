@@ -3,7 +3,7 @@ import { extractENSFuses, getOpenRenewalManagerAddress, getPetalLockUseTransacti
 import { petalLockContractArtifact } from '../VendoredPetalLock.js'
 import { BlockCall, EthSimulateV1Result } from './ethSimulate-types.js'
 import { jsonRpcRequest } from './ethSimulate.js'
-import { ENS_ETH_REGISTRAR_CONTROLLER, ENS_PUBLIC_RESOLVER, ENS_TOKEN_WRAPPER } from '../utils/constants.js'
+import { ENS_ETH_REGISTRAR_CONTROLLER, ENS_PUBLIC_RESOLVER, ENS_TOKEN_WRAPPER, FINAL_CHILD_FUSES, MID_PARENT_FUSES, SINGLE_DOMAIN_FUSES, TOP_PARENT_FUSES } from '../utils/constants.js'
 import { ENS_WRAPPER_ABI } from '../abi/ens_wrapper_abi.js'
 import { ENS_REGISTRAR_CONTROLLER_ABI } from '../abi/ens_registrar_controller_abi.js'
 import { dataStringWith0xStart, splitDomainToSubDomainAndParent } from '../utils/utilities.js'
@@ -69,35 +69,6 @@ const ethSimulateTransactions = async (rpc: string, transactions: readonly Block
 		]
 	} as const))
 }
-
-const FINAL_CHILD_FUSES = [
-	'Cannot Unwrap Name',
-	'Cannot Burn Fuses',
-	'Cannot Set Resolver',
-	'Cannot Set Time To Live',
-	'Cannot Create Subdomain',
-	'Cannot Approve',
-	'Parent Domain Cannot Control',
-	'Can Extend Expiry'
-] as const
-
-const SINGLE_DOMAIN_FUSES = [
-	'Cannot Unwrap Name',
-	'Is .eth domain',
-	'Cannot Approve',
-] as const
-
-const TOP_PARENT_FUSES = [
-	'Is .eth domain',
-	'Cannot Unwrap Name',
-	'Cannot Approve',
-] as const
-
-const MID_PARENT_FUSES = [
-	'Cannot Unwrap Name',
-	'Parent Domain Cannot Control',
-	'Cannot Approve',
-] as const
 
 const runTests = async () => {
 	console.log(`Reneval manager: ${ getOpenRenewalManagerAddress() }`)

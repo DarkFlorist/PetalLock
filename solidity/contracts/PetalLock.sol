@@ -60,10 +60,16 @@ IEnsTokenWrapper constant ensTokenWrapper = IEnsTokenWrapper(ENS_TOKEN_WRAPPER);
 IEnsPublicResolver constant ensPublicResolver = IEnsPublicResolver(ENS_PUBLIC_RESOLVER);
 IENsRegistrarController constant ensRegistrarController = IENsRegistrarController(ENS_ETH_REGISTRAR_CONTROLLER);
 
-// fuse combinations
+// FUSES
+// fuses to burn for the second level domain given it's not the one made immutable
 uint16 constant TOP_PARENT_FUSES_TO_BURN = CANNOT_UNWRAP | CANNOT_APPROVE;
+// fuses to burn for each parent that is not second level domain
 uint32 constant PARENT_FUSES_TO_BURN = CANNOT_UNWRAP | PARENT_CANNOT_CONTROL | CANNOT_APPROVE;
+// fuses to burn when there's subdomain or more subdomains: <finalchild>.<name>.eth or <finalchild>.<parent>.<name>.eth
 uint32 constant FINAL_CHILD_FUSES_TO_BURN = CANNOT_UNWRAP | CANNOT_BURN_FUSES | CANNOT_SET_RESOLVER | CANNOT_SET_TTL | CANNOT_CREATE_SUBDOMAIN | PARENT_CANNOT_CONTROL | CANNOT_APPROVE | CAN_EXTEND_EXPIRY;
+
+// fuses to burn whe second level domain is made immutable: <name>.eth
+uint16 constant ONLY_CHILD_FUSES = CANNOT_UNWRAP;
 
 uint64 constant MAX_UINT64 = type(uint64).max;
 uint256 constant ETH_NAME_HASH = 0x93cdeb708b7545dc668eb9280176169d1c33cfd8ed6f04690a0bcc88a93fc4ae; // keccak256(namehash('') + labelhash('eth')) https://docs.ens.domains/resolution/names
@@ -132,9 +138,9 @@ contract PetalLock {
 		if (resolutionAddress != address(0x0)) { ensPublicResolver.setAddr(pathToChild[finalChildIndex].node, resolutionAddress); }
 		
 		// BURN PARENT FUSES //
-		// the top parent
+		// burn top parent fuses if the top parent is not the same as final child
 		(, uint32 topParentFuses,) = ensTokenWrapper.getData(uint256(pathToChild[0].node));
-		if (topParentFuses & TOP_PARENT_FUSES_TO_BURN != TOP_PARENT_FUSES_TO_BURN) {
+		if (finalChildIndex != 0 && topParentFuses & TOP_PARENT_FUSES_TO_BURN != TOP_PARENT_FUSES_TO_BURN) {
 			ensTokenWrapper.setFuses(pathToChild[0].node, TOP_PARENT_FUSES_TO_BURN);
 		}
 
@@ -149,8 +155,8 @@ contract PetalLock {
 		// BURN FINAL CHILD FUSES //
 		(, uint32 finalChildFuses,) = ensTokenWrapper.getData(uint256(pathToChild[finalChildIndex].node));
 		if (finalChildIndex == 0) { // only one node in the data (<name>.eth)
-			if (finalChildFuses & CANNOT_UNWRAP != CANNOT_UNWRAP) {
-				ensTokenWrapper.setFuses(pathToChild[0].node, CANNOT_UNWRAP);
+			if (finalChildFuses & ONLY_CHILD_FUSES != ONLY_CHILD_FUSES) {
+				ensTokenWrapper.setFuses(pathToChild[0].node, ONLY_CHILD_FUSES);
 			}
 		} else {
 			if (finalChildFuses & FINAL_CHILD_FUSES_TO_BURN != FINAL_CHILD_FUSES_TO_BURN) {
@@ -191,7 +197,7 @@ contract PetalLock {
 		return this.onERC1155BatchReceived.selector;
 	}
 	
-	// only ensRegistrarController refunds eth to us
+	// only ensRegistrarController should send eth to us (refund for renewals)
 	receive() external payable  {
 		require(msg.sender == ENS_ETH_REGISTRAR_CONTROLLER, 'PetalLock: do not send ETH to PetalLock');
 	}
