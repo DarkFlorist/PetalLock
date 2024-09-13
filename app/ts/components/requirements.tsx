@@ -3,7 +3,7 @@ import { AccountAddress, CheckBoxes, FinalChildChecks, ParentChecks } from '../t
 import { ENS_TOKEN_WRAPPER } from '../utils/constants.js'
 import { callPetalLock, deployPetalLockAndRenewalManager, getOpenRenewalManagerAddress, getRequiredFuses, renewDomainByYear, renewDomainToMax } from '../utils/ensUtils.js'
 import { isSameAddress } from '../utils/utilities.js'
-import { OptionalSignal } from './PreactUtils.js'
+import { OptionalSignal } from '../utils/OptionalSignal.js'
 import { isValidContentHashString } from '../utils/contenthash.js'
 import { Spinner } from './Spinner.js'
 import { isAddress } from 'viem'

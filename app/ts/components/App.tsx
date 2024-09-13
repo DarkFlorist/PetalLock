@@ -5,7 +5,7 @@ import { BigSpinner } from './Spinner.js'
 import { ensureError } from '../utils/utilities.js'
 import { AccountAddress, CheckBoxes, DomainInfo, FinalChildChecks, ParentChecks } from '../types/types.js'
 import { Create, Immutable, Requirements } from './requirements.js'
-import { useOptionalSignal } from './PreactUtils.js'
+import { useOptionalSignal } from '../utils/OptionalSignal.js'
 import { getChainId } from '../utils/ensUtils.js'
 
 interface WalletComponentProps {
