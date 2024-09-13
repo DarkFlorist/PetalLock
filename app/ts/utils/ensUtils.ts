@@ -57,7 +57,7 @@ const createReadClient = (accountAddress: AccountAddress | undefined) => {
 const createWriteClient = (accountAddress: AccountAddress) => {
 	if (window.ethereum === undefined) throw new Error('no window.ethereum injected')
 	if (accountAddress === undefined) throw new Error('no accountAddress!')
-	return createWalletClient({ accountAddress, chain: mainnet, transport: custom(window.ethereum) }).extend(publicActions)
+	return createWalletClient({ account: accountAddress, chain: mainnet, transport: custom(window.ethereum) }).extend(publicActions)
 }
 
 export const getChainId = async (accountAddress: AccountAddress) => {
@@ -301,7 +301,7 @@ export const getPetalLockUseTransaction = (petalLockAddress: AccountAddress, acc
 	], [pathToChild, encodedContentHash, decodedResolutionAddress])
 	return {
 		chain: mainnet,
-		accountAddress,
+		account: accountAddress,
 		address: ENS_TOKEN_WRAPPER,
 		abi: ENS_WRAPPER_ABI,
 		functionName: 'safeBatchTransferFrom',
@@ -341,7 +341,7 @@ export const renewDomainByYear = async (accountAddress: AccountAddress, extendYe
 	const hash = await client.writeContract({
 		value: totalRentCost,
 		chain: mainnet,
-		accountAddress,
+		account: accountAddress,
 		address: petalLockAddress,
 		abi: PETAL_LOCK_ABI,
 		functionName: 'batchExtend',
@@ -361,7 +361,7 @@ export const renewDomainToMax = async (accountAddress: AccountAddress, domainInf
 
 	const hash = await client.writeContract({
 		chain: mainnet,
-		accountAddress,
+		account: accountAddress,
 		address: petalLockAddress,
 		abi: PETAL_LOCK_ABI,
 		functionName: 'batchExtend',
