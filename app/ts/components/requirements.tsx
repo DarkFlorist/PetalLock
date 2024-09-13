@@ -136,7 +136,7 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 		await updateInfos(false)
 		areContractsDeployed.value = true
 	}
-	
+
 	const renewByYear = async () => {
 		const acc = account.peek()
 		if (acc === undefined) throw new Error('missing account')
@@ -209,30 +209,30 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 				<p style = 'white-space: nowrap; margin: 0; font-size: 24px; padding-bottom: 10px'>{ `Make the domain immutable!` }</p>
 				<div style = 'display: grid; grid-template-columns: min-content auto; width: 100%; gap: 10px; padding-bottom: 10px;'>
 					<p style = 'white-space: nowrap; margin: 0;'>{ `Content hash:` }</p>
-					<input 
+					<input
 						style = 'height: fit-content;'
 						class = 'input'
 						type = 'text'
 						width = '100%'
 						placeholder = 'ipfs://bafy...'
-						value = { contentHashInput.value } 
+						value = { contentHashInput.value }
 						onInput = { e => handleContentHashInput(e.currentTarget.value) }
 					/>
 				</div>
 				<div style = 'display: grid; grid-template-columns: min-content auto; width: 100%; gap: 10px;'>
 					<p style = 'white-space: nowrap; margin: 0;'>{ `Resolution address:` }</p>
-					<input 
+					<input
 						style = 'height: fit-content;'
 						class = 'input'
 						type = 'text'
 						width = '100%'
 						placeholder = '0x...'
-						value = { resolutionAddressInput.value } 
+						value = { resolutionAddressInput.value }
 						onInput = { e => handleResolutionAddressInput(e.currentTarget.value) }
 					/>
 				</div>
 			</div> : <></> }
-			
+
 			{ areContractsDeployed.value === false ? <>
 				<p class = 'error-component' style = 'width: 100%; margin-left: 10px; text-align: center;'> PetalLock contract is not deployed. </p>
 				<button class = 'button is-primary' onClick = { deploy }> Deploy PetalLock contract</button>
@@ -259,7 +259,7 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 					{ validContenthash.value || contentHashInput.value.length == 0 ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ` - Content hash is not valid` } </p> }
 					{ validResolutionAddress.value || resolutionAddressInput.value.length == 0 ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ` - Resolution address is not a valid address` } </p> }
 					{ validContenthash.value || validResolutionAddress.value ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ` - Set content hash or resolution address or both` } </p> }
-	
+
 					{ wrappedIssues.value === undefined ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { wrappedIssues.value } </p> }
 					{ ownershipIssues.value === undefined ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ownershipIssues.value } </p> }
 				</div>

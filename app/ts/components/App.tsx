@@ -27,8 +27,8 @@ const WalletComponent = ({ account }: WalletComponentProps) => {
 
 export function App() {
 	const inputValue = useSignal<string>('')
-	const contentHashInput = useSignal<string>('') 
-	const resolutionAddressInput = useSignal<string>('') 
+	const contentHashInput = useSignal<string>('')
+	const resolutionAddressInput = useSignal<string>('')
 	const errorString = useOptionalSignal<string>(undefined)
 	const loadingAccount = useSignal<boolean>(false)
 	const isWindowEthereum = useSignal<boolean>(true)
@@ -85,7 +85,7 @@ export function App() {
 						ownershipOpenRenewalContract: isChildOwnershipOwnedByOpenRenewManager(currElement),
 						immutable: immutable.value,
 						contentHashIsSet: currElement.contentHash !== '0x',
-						resolutionAddressIsSet: BigInt(currElement.resolutionAddress) !== 0n, 
+						resolutionAddressIsSet: BigInt(currElement.resolutionAddress) !== 0n,
 					}
 				}
 				return {
@@ -158,7 +158,7 @@ export function App() {
 			}
 		}
 	}, [])
-	
+
 	useEffect(() => {
 		updateInfos(true)
 		updateChainId()
@@ -167,7 +167,7 @@ export function App() {
 	return <main>
 		<div class = 'app'>
 			{ !isWindowEthereum.value ? <p class = 'paragraph'> An Ethereum enabled wallet is required to make immutable domains.</p> : <></> }
-			
+
 			{ !loadingAccount.value && isWindowEthereum.value ? <WalletComponent account = { account } /> : <></> }
 
 			<div style = 'display: block'>
@@ -176,23 +176,23 @@ export function App() {
 				</div>
 				<p class = 'sub-title'>Make immutable ENS domains and subdomains</p>
 			</div>
-		
-			<input 
-				class = 'input' 
-				type = 'text' 
-				placeholder = '2.horswap.eth' 
-				value = { inputValue.value } 
+
+			<input
+				class = 'input'
+				type = 'text'
+				placeholder = '2.horswap.eth'
+				value = { inputValue.value }
 				onInput = { e => handleInput(e.currentTarget.value) }
 			/>
-			
+
 			{ loadingInfos.value === true || loadingAccount.value ? <div style = 'max-width: fit-content; margin-inline: auto; padding: 20px;'> <BigSpinner/> </div> : <></> }
 
 			{ errorString.deepValue !== undefined ? <p class = 'error-component'> { errorString.value }</p> : <> </> }
 
 			{ chainId.value !== undefined && chainId.value !== 1 ? <p class = 'error-component'> { 'PetalLock functions only on Ethereum Mainnet. Please switch to Ethereum Mainnet.' }</p> : <> </> }
-			
+
 			{ checkBoxes.deepValue === undefined || checkBoxes.deepValue[0] === undefined || checkBoxes.deepValue[0].exists ? <></>: <p style = 'color: #b43c42'>{ `The name ${ checkBoxes.deepValue[0].domainInfo.label } does not exist in the ENS registry. You need to register the domain to use PetalLock.` }</p> }
-			
+
 			{ checkBoxes.value !== undefined ? <Immutable checkBoxesArray = { checkBoxes.value } /> : <></> }
 
 			<Requirements checkBoxesArray = { checkBoxes }/>

@@ -68,42 +68,42 @@ const getDomainInfo = async (account: AccountAddress | undefined, nameHash: `0x$
 	const client = createReadClient(account)
 	const isWrappedPromise = client.readContract({
 		address: ENS_TOKEN_WRAPPER,
-		abi: ENS_WRAPPER_ABI, 
+		abi: ENS_WRAPPER_ABI,
 		functionName: 'isWrapped',
 		args: [nameHash]
 	})
 
 	const ownerPromise = client.readContract({
 		address: ENS_TOKEN_WRAPPER,
-		abi: ENS_WRAPPER_ABI, 
+		abi: ENS_WRAPPER_ABI,
 		functionName: 'ownerOf',
 		args: [BigInt(nameHash)]
 	})
-	
+
 	const dataPromise = client.readContract({
 		address: ENS_TOKEN_WRAPPER,
-		abi: ENS_WRAPPER_ABI, 
+		abi: ENS_WRAPPER_ABI,
 		functionName: 'getData',
 		args: [BigInt(nameHash)]
 	})
 
 	const registeredPromise = client.readContract({
 		address: ENS_REGISTRY_WITH_FALLBACK,
-		abi: ENS_REGISTRY_ABI, 
+		abi: ENS_REGISTRY_ABI,
 		functionName: 'recordExists',
 		args: [nameHash]
 	})
 
 	const contentHashPromise = client.readContract({
 		address: ENS_PUBLIC_RESOLVER,
-		abi: ENS_PUBLIC_RESOLVER_ABI, 
+		abi: ENS_PUBLIC_RESOLVER_ABI,
 		functionName: 'contenthash',
 		args: [nameHash]
 	})
 
 	const resolutionAddressPromise = client.readContract({
 		address: ENS_PUBLIC_RESOLVER,
-		abi: ENS_PUBLIC_RESOLVER_ABI, 
+		abi: ENS_PUBLIC_RESOLVER_ABI,
 		functionName: 'addr',
 		args: [nameHash]
 	})
@@ -133,7 +133,7 @@ const getDomainInfo = async (account: AccountAddress | undefined, nameHash: `0x$
 
 	const approvedPromise = client.readContract({
 		address: ENS_TOKEN_WRAPPER,
-		abi: ENS_WRAPPER_ABI, 
+		abi: ENS_WRAPPER_ABI,
 		functionName: 'getApproved',
 		args: [BigInt(nameHash)]
 	})
@@ -303,7 +303,7 @@ export const getPetalLockUseTransaction = (petalLockAddress: AccountAddress, acc
 		chain: mainnet,
 		account,
 		address: ENS_TOKEN_WRAPPER,
-		abi: ENS_WRAPPER_ABI, 
+		abi: ENS_WRAPPER_ABI,
 		functionName: 'safeBatchTransferFrom',
 		args: [account, petalLockAddress, ownedTokens, ownedTokens.map(() => 1n), data]
 	} as const
@@ -332,7 +332,7 @@ export const renewDomainByYear = async (account: AccountAddress, extendYear: num
 	const totalRentCost = (await Promise.all(domainInfos.map( async (domain) =>
 		domain.fuses.includes('Is .eth domain') ? await client.readContract({
 			address: ENS_ETH_REGISTRAR_CONTROLLER,
-			abi: ENS_REGISTRAR_CONTROLLER_ABI, 
+			abi: ENS_REGISTRAR_CONTROLLER_ABI,
 			functionName: 'rentPrice',
 			args: [domain.subDomain, extendSeconds]
 		}) : { base: 0n, premium: 0n }
@@ -343,7 +343,7 @@ export const renewDomainByYear = async (account: AccountAddress, extendYear: num
 		chain: mainnet,
 		account,
 		address: petalLockAddress,
-		abi: PETAL_LOCK_ABI, 
+		abi: PETAL_LOCK_ABI,
 		functionName: 'batchExtend',
 		args: [domainsAndSubDomains]
 	})
@@ -363,7 +363,7 @@ export const renewDomainToMax = async (account: AccountAddress, domainInfos: Dom
 		chain: mainnet,
 		account,
 		address: petalLockAddress,
-		abi: PETAL_LOCK_ABI, 
+		abi: PETAL_LOCK_ABI,
 		functionName: 'batchExtend',
 		args: [domainsAndSubDomains]
 	})

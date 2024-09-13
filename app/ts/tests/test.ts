@@ -130,7 +130,7 @@ const runTests = async () => {
 		])
 		if (!allSuccess(result)) throw new Error('transaction failed')
 		if (result[0]?.calls[2]?.returnData === undefined || result[0]?.calls[3]?.returnData === undefined) throw new Error('no results for calls')
-		
+
 		const parentData = decodeFunctionResult({ abi: ENS_WRAPPER_ABI, functionName: 'getData', data: dataStringWith0xStart(result[0]?.calls[2]?.returnData) })
 		const parentFuses = new Set(extractENSFuses(BigInt(parentData[1])))
 		if (!new Set(TOP_PARENT_FUSES).isSubsetOf(new Set(parentFuses))) throw new Error(`not correct parent fuses: ${ Array.from(parentFuses).join(',') }, Expected: ${ TOP_PARENT_FUSES.join(',') }`)
@@ -245,12 +245,12 @@ const runTests = async () => {
 		const parentData1 = decodeFunctionResult({ abi: ENS_WRAPPER_ABI, functionName: 'getData', data: dataStringWith0xStart(result[0]?.calls[1]?.returnData) })
 		const parentFuses1 = new Set(extractENSFuses(BigInt(parentData1[1])))
 		if (!new Set(TOP_PARENT_FUSES).isSubsetOf(parentFuses1)) throw new Error('not correct parent1 fuses')
-		
+
 		// parent 2
 		const parentData2 = decodeFunctionResult({ abi: ENS_WRAPPER_ABI, functionName: 'getData', data: dataStringWith0xStart(result[0]?.calls[2]?.returnData) })
 		const parentFuses2 = new Set(extractENSFuses(BigInt(parentData2[1])))
 		if (!new Set(MID_PARENT_FUSES).isSubsetOf(parentFuses2)) throw new Error('not correct parent2 fuses')
-		
+
 		// child
 		const childData = decodeFunctionResult({ abi: ENS_WRAPPER_ABI, functionName: 'getData', data: dataStringWith0xStart(result[0]?.calls[3]?.returnData) })
 		const childFuses = new Set(extractENSFuses(BigInt(childData[1])))
@@ -258,7 +258,7 @@ const runTests = async () => {
 
 		// parent 1 ownership.  We should own this
 		if (bytesToUnsigned(result[0]?.calls[4]?.returnData) !== 1n) throw new Error('we lost the token 1')
-		
+
 		// parent 2 ownership. We should own this
 		if (bytesToUnsigned(result[0]?.calls[5]?.returnData) !== 1n) throw new Error('we lost the token 2')
 
@@ -309,17 +309,17 @@ const runTests = async () => {
 		])
 		if (!allSuccess(result)) throw new Error('transaction failed')
 		if (result[0]?.calls[0]?.returnData === undefined ||
-			result[0]?.calls[1]?.returnData === undefined || 
-			result[0]?.calls[2]?.returnData === undefined || 
-			result[0]?.calls[3]?.returnData === undefined || 
+			result[0]?.calls[1]?.returnData === undefined ||
+			result[0]?.calls[2]?.returnData === undefined ||
+			result[0]?.calls[3]?.returnData === undefined ||
 			result[0]?.calls[4]?.returnData === undefined
 		) throw new Error('no results')
 		const priorContentHash = decodeFunctionResult({ abi: ENS_PUBLIC_RESOLVER_ABI, functionName: 'contenthash', data: dataStringWith0xStart(result[0].calls[0].returnData) })
 		const afterContentHash = decodeFunctionResult({ abi: ENS_PUBLIC_RESOLVER_ABI, functionName: 'contenthash', data: dataStringWith0xStart(result[0].calls[3].returnData) })
-		
+
 		if (priorContentHash === afterContentHash) throw new Error('content has was not set')
 		if (decodeContentHash(afterContentHash) !== testContentHash) throw new Error('wrong content hash')
-		
+
 		const priorAddr = dataStringWith0xStart(result[0].calls[1].returnData)
 		const afterAddr = dataStringWith0xStart(result[0].calls[4].returnData)
 		if (BigInt(priorAddr) === BigInt(afterAddr)) throw new Error('addr was not set')
@@ -419,7 +419,7 @@ const runTests = async () => {
 		])
 		if (!allSuccess(result)) throw new Error('transaction failed')
 		if (result[0]?.calls[1]?.returnData === undefined || result[0]?.calls[2]?.returnData === undefined || result[0]?.calls[3]?.returnData === undefined) throw new Error('fff')
-		
+
 		const renewalManager = getOpenRenewalManagerAddress()
 		if (BigInt(dataStringWith0xStart(result[0]?.calls[1]?.returnData)) !== BigInt(renewalManager)) throw new Error('wrong approval for call 1')
 		if (BigInt(dataStringWith0xStart(result[0]?.calls[2]?.returnData)) !== BigInt(renewalManager)) throw new Error('wrong approval for call 2')
@@ -513,14 +513,14 @@ const runTests = async () => {
 		])
 		if (!allSuccess(result)) throw new Error('transaction failed')
 		if (result[0]?.calls[0]?.returnData === undefined ||
-			result[0]?.calls[1]?.returnData === undefined || 
-			result[0]?.calls[2]?.returnData === undefined || 
-			result[0]?.calls[3]?.returnData === undefined || 
-			result[0]?.calls[4]?.returnData === undefined || 
+			result[0]?.calls[1]?.returnData === undefined ||
+			result[0]?.calls[2]?.returnData === undefined ||
+			result[0]?.calls[3]?.returnData === undefined ||
+			result[0]?.calls[4]?.returnData === undefined ||
 			result[0]?.calls[5]?.returnData === undefined
 		) throw new Error('no results')
 		const contentHash = decodeFunctionResult({ abi: ENS_PUBLIC_RESOLVER_ABI, functionName: 'contenthash', data: dataStringWith0xStart(result[0].calls[2].returnData) })
-		
+
 		if (decodeContentHash(contentHash) !== testContentHash) throw new Error('wrong content hash')
 		const childData = decodeFunctionResult({ abi: ENS_WRAPPER_ABI, functionName: 'getData', data: dataStringWith0xStart(result[0]?.calls[4]?.returnData) })
 		const childFuses = new Set(extractENSFuses(BigInt(childData[1])))

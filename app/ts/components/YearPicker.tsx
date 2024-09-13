@@ -24,7 +24,7 @@ export const YearPicker = ( { year }: CreateProps) => {
 				maxlength = { 4 }
 				type = 'text'
 				pattern = '\d*'
-				value = { year.value } 
+				value = { year.value }
 				onInput = { e => setYear(e.currentTarget.value) }
 			/>
 			<div class = 'year-selector-counter-num'>{ year }</div>

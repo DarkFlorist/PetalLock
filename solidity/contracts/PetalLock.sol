@@ -82,12 +82,12 @@ function exists(uint256 tokenId, SubDomainLabelNode[] memory pathToChild) pure r
 	return false;
 }
 
-struct SubDomainLabelNode { 
+struct SubDomainLabelNode {
 	string label;
 	bytes32 node;
 }
 
-struct BatchExtend { 
+struct BatchExtend {
 	bytes32 parentNode;
 	string label;
 	uint64 domainExpiry;
@@ -114,8 +114,8 @@ contract PetalLock {
 		if (finalChildIndex != 0 && ensTokenWrapper.getApproved(uint256(pathToChild[0].node)) != OPEN_RENEWAL_MANAGER) {
 			ensTokenWrapper.approve(OPEN_RENEWAL_MANAGER, uint256(pathToChild[0].node));
 		}
-		
-		// CREATE SUBDOMAINS // 
+
+		// CREATE SUBDOMAINS //
 		// create nodes and approve open renewal manager. Do not create the first domain, it needs to be created already
 		for (uint256 i = 1; i < pathToChild.length; i++) {
 			bytes32 node = pathToChild[i].node;
@@ -135,7 +135,7 @@ contract PetalLock {
 		// set content hash and address
 		if (contenthash.length != 0) { ensPublicResolver.setContenthash(pathToChild[finalChildIndex].node, contenthash); }
 		if (resolutionAddress != address(0x0)) { ensPublicResolver.setAddr(pathToChild[finalChildIndex].node, resolutionAddress); }
-		
+
 		if (finalChildIndex == 0) { // the second level domain is made immutable
 			(, uint32 finalChildFuses,) = ensTokenWrapper.getData(uint256(pathToChild[finalChildIndex].node));
 			if (finalChildFuses & ONLY_CHILD_FUSES != ONLY_CHILD_FUSES) {
@@ -153,7 +153,7 @@ contract PetalLock {
 					ensTokenWrapper.setChildFuses(pathToChild[i - 1].node, keccak256(abi.encodePacked(pathToChild[i].label)), PARENT_FUSES_TO_BURN, MAX_UINT64);
 				}
 			}
-			
+
 			// burn the final child fuses
 			(, uint32 finalChildFuses,) = ensTokenWrapper.getData(uint256(pathToChild[finalChildIndex].node));
 			if (finalChildFuses & FINAL_CHILD_FUSES_TO_BURN != FINAL_CHILD_FUSES_TO_BURN) {
@@ -163,7 +163,7 @@ contract PetalLock {
 
 		// move the final child to renewal manager, so it can be renewed by anyone (otherwise its technically burned)
 		ensTokenWrapper.safeTransferFrom(address(this), OPEN_RENEWAL_MANAGER, uint256(pathToChild[finalChildIndex].node), 1, bytes(''));
-		
+
 		// return rest of the tokens to the sender
 		uint256[] memory returnableTokens = new uint256[](pathToChild.length - 1);
 		uint256[] memory returnableAmounts = new uint256[](returnableTokens.length);
@@ -171,10 +171,10 @@ contract PetalLock {
 			returnableTokens[i] = uint256(pathToChild[i].node);
 			returnableAmounts[i] = 1;
 		}
-		
+
 		ensTokenWrapper.safeBatchTransferFrom(address(this), originalOwner, returnableTokens, returnableAmounts, bytes(''));
 	}
-	
+
 	// allow only minting wraped ENS tokens here (required as we are minting them here)
 	function onERC1155Received(address operator, address from, uint256, uint256, bytes memory) public view returns (bytes4) {
 		require(from == address(0x0) && operator == address(this) && msg.sender == ENS_TOKEN_WRAPPER, 'PetalLock: Do not send tokens to PetalLock');
@@ -185,15 +185,15 @@ contract PetalLock {
 	function onERC1155BatchReceived(address, address from, uint256[] memory ids, uint256[] memory, bytes memory data) public returns (bytes4) {
 		require(msg.sender == ENS_TOKEN_WRAPPER, 'PetalLock: Only Wrapped ENS tokens are supported');
 		(SubDomainLabelNode[] memory pathToChild, bytes memory contenthash, address resolutionAddress) = abi.decode(data, (SubDomainLabelNode[], bytes, address));
-		
-		for (uint256 idIndex = 0; idIndex < ids.length; idIndex++) {	
+
+		for (uint256 idIndex = 0; idIndex < ids.length; idIndex++) {
 			require(exists(ids[idIndex], pathToChild), 'PetalLock: Sent token does not exist in nodes');
 		}
 		require(contenthash.length != 0 || resolutionAddress != address(0x0), 'PetalLock: Either resolution address or content hash need to be set');
 		makeImmutable(from, pathToChild, contenthash, resolutionAddress);
 		return this.onERC1155BatchReceived.selector;
 	}
-	
+
 	// only ensRegistrarController should send eth to us (refund for renewals)
 	receive() external payable {
 		require(msg.sender == ENS_ETH_REGISTRAR_CONTROLLER, 'PetalLock: do not send ETH to PetalLock');
