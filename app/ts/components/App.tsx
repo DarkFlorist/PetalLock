@@ -41,6 +41,8 @@ export function App() {
 	const loadingInfos = useSignal<boolean>(false)
 	const creating = useSignal<boolean>(false)
 	const inputTimeoutRef = useRef<number | null>(null)
+	const extendYear = useSignal<number>(1)
+	const extending = useSignal<boolean>(false)
 
 	const setError = (error: unknown) => {
 		if (error === undefined) {
@@ -206,6 +208,8 @@ export function App() {
 				updateInfos = { updateInfos }
 				creating = { creating }
 				areContractsDeployed = { areContractsDeployed }
+				extendYear = { extendYear }
+				extending = { extending }
 			/>
 		</div>
 		<div class = 'text-white/50 text-center'>

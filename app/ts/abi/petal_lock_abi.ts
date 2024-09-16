@@ -2,30 +2,31 @@ export const PETAL_LOCK_ABI = [
 	{
 		"inputs": [
 			{
-				"internalType": "bytes32",
-				"name": "parentNode",
-				"type": "bytes32"
-			},
-			{
-				"internalType": "bytes32",
-				"name": "labelhash",
-				"type": "bytes32"
-			},
-			{
-				"internalType": "uint64",
-				"name": "expiry",
-				"type": "uint64"
+				"components": [
+					{
+						"internalType": "bytes32",
+						"name": "parentNode",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "string",
+						"name": "label",
+						"type": "string"
+					},
+					{
+						"internalType": "uint64",
+						"name": "domainExpiry",
+						"type": "uint64"
+					}
+				],
+				"internalType": "struct BatchExtend[]",
+				"name": "domainsAndSubDomains",
+				"type": "tuple[]"
 			}
 		],
-		"name": "extendExpiry",
-		"outputs": [
-			{
-				"internalType": "uint64",
-				"name": "",
-				"type": "uint64"
-			}
-		],
-		"stateMutability": "nonpayable",
+		"name": "batchExtend",
+		"outputs": [],
+		"stateMutability": "payable",
 		"type": "function"
 	},
 	{

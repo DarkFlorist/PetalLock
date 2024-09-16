@@ -6,10 +6,11 @@ import { jsonRpcRequest } from './ethSimulate.js'
 import { ENS_ETH_REGISTRAR_CONTROLLER, ENS_PUBLIC_RESOLVER, ENS_TOKEN_WRAPPER } from '../utils/constants.js'
 import { ENS_WRAPPER_ABI } from '../abi/ens_wrapper_abi.js'
 import { ENS_REGISTRAR_CONTROLLER_ABI } from '../abi/ens_registrar_controller_abi.js'
-import { dataStringWith0xStart } from '../utils/utilities.js'
+import { dataStringWith0xStart, splitDomainToSubDomainAndParent } from '../utils/utilities.js'
 import { ENS_PUBLIC_RESOLVER_ABI } from '../abi/ens_public_resolver_abi.js'
 import { decodeContentHash } from '../utils/contenthash.js'
 import { addressString, allSuccess, bytesToUnsigned, removeEthSuffix, stringToUint8Array } from './test-utils.js'
+import { OPEN_RENEWAL_MANAGER_ABI } from '../abi/open_renewal_manager_abi.js'
 import { PETAL_LOCK_ABI } from '../abi/petal_lock_abi.js'
 
 const rpc = 'https://geth.dark.florist' as const
@@ -405,7 +406,7 @@ const runTests = async () => {
 				from: whale,
 				to: BigInt(getOpenRenewalManagerAddress()),
 				input: stringToUint8Array(encodeFunctionData({
-					abi: PETAL_LOCK_ABI, //WRONG ABI,
+					abi: OPEN_RENEWAL_MANAGER_ABI,
 					functionName: 'extendExpiry',
 					args: [namehash(subdomainRouteNames2[0]), labelhash('immutable'), 2n ** 64n - 1n]
 				})),
@@ -471,7 +472,7 @@ const runTests = async () => {
 				from: whale,
 				to: BigInt(getOpenRenewalManagerAddress()),
 				input: stringToUint8Array(encodeFunctionData({
-					abi: PETAL_LOCK_ABI, //WRONG ABI,
+					abi: OPEN_RENEWAL_MANAGER_ABI,
 					functionName: 'extendExpiry',
 					args: [namehash(subdomainRouteNames3[0]), labelhash('midname'), 2n ** 64n - 1n]
 				})),
@@ -480,7 +481,7 @@ const runTests = async () => {
 				from: whale,
 				to: BigInt(getOpenRenewalManagerAddress()),
 				input: stringToUint8Array(encodeFunctionData({
-					abi: PETAL_LOCK_ABI, //WRONG ABI,
+					abi: OPEN_RENEWAL_MANAGER_ABI,
 					functionName: 'extendExpiry',
 					args: [namehash(subdomainRouteNames3[1]), labelhash('immutable'), 2n ** 64n - 1n]
 				})),
@@ -561,13 +562,59 @@ const runTests = async () => {
 			makeImmutableDomain([subdomainRouteNames3[0]], ownedTokens),
 			{
 				from: whale,
+				to: BigInt(ENS_TOKEN_WRAPPER),
+				input: stringToUint8Array(encodeFunctionData({
+					abi: ENS_WRAPPER_ABI,
+					functionName: 'getData',
+					args: [BigInt(namehash(subdomainRouteNames3[2]))]
+				})),
+			},
+			{
+				from: whale,
 				to: BigInt(ENS_ETH_REGISTRAR_CONTROLLER),
 				input: stringToUint8Array(encodeFunctionData({
 					abi: ENS_REGISTRAR_CONTROLLER_ABI,
 					functionName: 'renew',
 					args: [removeEthSuffix(subdomainRouteNames3[0]), 10n],
 				})),
-				value: parseEther('1')
+				value: parseEther('100')
+			},
+			{
+				from: whale,
+				to: BigInt(ENS_TOKEN_WRAPPER),
+				input: stringToUint8Array(encodeFunctionData({
+					abi: ENS_WRAPPER_ABI,
+					functionName: 'getData',
+					args: [BigInt(namehash(subdomainRouteNames3[2]))]
+				})),
+			},
+		])
+		if (!allSuccess(result)) throw new Error('transaction failed')
+		if (result[0]?.calls[1]?.returnData === undefined || result[0]?.calls[3]?.returnData === undefined) throw new Error('no results')
+		const before = decodeFunctionResult({ abi: ENS_WRAPPER_ABI, functionName: 'getData', data: dataStringWith0xStart(result[0]?.calls[1]?.returnData) })
+		const after = decodeFunctionResult({ abi: ENS_WRAPPER_ABI, functionName: 'getData', data: dataStringWith0xStart(result[0]?.calls[3]?.returnData) })
+		if (before[2] > after[2]) throw new Error('failed to extend')
+	}
+	const testBatchExtend = async () => {
+		const ownedTokens = [BigInt(namehash(subdomainRouteNames3[0]))]
+		const result = await ethSimulateTransactions(rpc, [
+			makeImmutableDomain(subdomainRouteNames3, ownedTokens),
+			{
+				from: whale,
+				to: petalLockAddress,
+				input: stringToUint8Array(encodeFunctionData({
+					abi: PETAL_LOCK_ABI,
+					functionName: 'batchExtend',
+					args: [subdomainRouteNames3.map((subdomain) => {
+						const [label, parent] = splitDomainToSubDomainAndParent(subdomain)
+						return {
+							parentNode: namehash(parent),
+							label,
+							domainExpiry: 31536000n
+						}
+					})],
+				})),
+				value: parseEther('100'),
 			},
 		])
 		if (!allSuccess(result)) throw new Error('transaction failed')
@@ -585,5 +632,6 @@ const runTests = async () => {
 	await testImmutableDomain()
 	await testThatFusesAreCorrect3PartAgain()
 	await testAnyoneCanRenewDomainExistingOne()
+	await testBatchExtend()
 }
 runTests()

@@ -90,3 +90,9 @@ export const splitEnsStringToSubdomainPath = (input: string): string[] => {
 	result.pop() // eth element
 	return result.reverse()
 }
+
+export const splitDomainToSubDomainAndParent = (domain: string): [string, string] => {
+	const index = domain.indexOf('.')
+	if (index === -1) throw new Error('not proper domain')
+	return [domain.slice(0, index), domain.slice(index + 1)]
+}
