@@ -105,7 +105,7 @@ contract PetalLock {
 				openRenewalManager.extendExpiry(domainsAndSubDomains[i].parentNode, keccak256(abi.encodePacked(domainsAndSubDomains[i].label)), MAX_UINT64);
 			}
 		}
-		(bool sent, bytes memory data) = payable(msg.sender).call{value: address(this).balance}("");
+		(bool sent,) = payable(msg.sender).call{value: address(this).balance}("");
        	require(sent, 'Failed to send Ether');
 	}
 

@@ -75,7 +75,7 @@ const runTests = async () => {
 	const testOpenRenewalManagerAddressIsConstant = async () => {
 		const openRenewalManagerAddress = 0xE5f2F2e05260eF23FEDbf0Dc9c5004F1860C1Dc1n
 		const calculatedAddress = BigInt(getOpenRenewalManagerAddress())
-		if (calculatedAddress !== openRenewalManagerAddress) throw new Error(`The Address of Open Renewal Manager has changed to ${ calculatedAddress }.`)
+		if (calculatedAddress !== openRenewalManagerAddress) throw new Error(`The Address of Open Renewal Manager has changed to ${ addressString(calculatedAddress) }.`)
 	}
 	const testMakeImmutable = async () => {
 		const ownedTokens = [BigInt(namehash(subdomainRouteNames2[0]))] as const
