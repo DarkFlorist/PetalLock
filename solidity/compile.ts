@@ -1,4 +1,5 @@
 import { promises as fs } from 'fs'
+import path = require('path')
 import { compile } from 'solc'
 
 const compilePetalLock = async () => {
@@ -22,6 +23,8 @@ const compilePetalLock = async () => {
 	}
 
 	var output = compile(JSON.stringify(input))
+	const artifactsDir = path.join(process.cwd(), 'artifacts')
+	await fs.mkdir(artifactsDir, { recursive: false })
 	fs.writeFile('artifacts/PetalLock.json', output)
 }
 

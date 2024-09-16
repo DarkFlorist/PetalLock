@@ -195,7 +195,7 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 		return false
 	})
 
-	const twoLevelDomainExpiryBiggerThanLowestLevelExpiry = computed(() => {
+	const level2DomainExpiryBiggerThanLowestLevelExpiry = computed(() => {
 		if (checkBoxes.deepValue === undefined) return false
 		const first = checkBoxes.deepValue[0]
 		const last = checkBoxes.deepValue[checkBoxes.deepValue.length - 1]
@@ -243,12 +243,12 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 					<p style = 'font-size: 24px;'> Renew by&nbsp;</p> <YearPicker year = { extendYear }/> <p style = 'font-size: 24px;'>&nbsp;years </p>
 					<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { extending.value } onClick = { renewByYear }> Renew { extending.value ? <Spinner/> : <></> }</button>
 				</div>
-				{ !twoLevelDomainExpiryBiggerThanLowestLevelExpiry.value || checkBoxes.deepValue[0] === undefined ? <></> : <>
+				{ !level2DomainExpiryBiggerThanLowestLevelExpiry.value || checkBoxes.deepValue[0] === undefined ? <></> : <>
 					<div style = 'justify-content: center; font-size: 24px;'>
 						<p> OR </p>
 					</div>
 					<div style = 'justify-content: center;'>
-						<p style = 'font-size: 24px;' >{ `Renew without renewing ${ checkBoxes.deepValue[0]?.domainInfo.subDomain }` }</p>
+						<p style = 'font-size: 24px;' >{ `Renew without renewing ${ checkBoxes.deepValue[0].domainInfo.subDomain }` }</p>
 						<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { extending.value } onClick = { renewToMax }> { `Renew to ${ new Date(Number(checkBoxes.deepValue[0].domainInfo.expiry) * 1000).toISOString().substring(0, 10) }`} { extending.value ? <Spinner/> : <></> }</button>
 					</div>
 				</> }
