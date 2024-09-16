@@ -2,6 +2,15 @@ import { promises as fs } from 'fs'
 import path = require('path')
 import { compile } from 'solc'
 
+async function exists(path: string) {
+	try {
+		await fs.stat(path)
+		return true
+	} catch {
+		return false
+	}
+}
+
 const compilePetalLock = async () => {
 	const input = {
 		language: 'Solidity',
@@ -24,7 +33,7 @@ const compilePetalLock = async () => {
 
 	var output = compile(JSON.stringify(input))
 	const artifactsDir = path.join(process.cwd(), 'artifacts')
-	await fs.mkdir(artifactsDir, { recursive: false })
+	if (!exists(artifactsDir)) await fs.mkdir(artifactsDir, { recursive: false })
 	fs.writeFile('artifacts/PetalLock.json', output)
 }
 
