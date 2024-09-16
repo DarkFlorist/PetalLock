@@ -68,7 +68,7 @@ uint32 constant PARENT_FUSES_TO_BURN = CANNOT_UNWRAP | PARENT_CANNOT_CONTROL | C
 // fuses to burn when there's subdomain or more subdomains: <finalchild>.<name>.eth or <finalchild>.<parent>.<name>.eth
 uint32 constant FINAL_CHILD_FUSES_TO_BURN = CANNOT_UNWRAP | CANNOT_BURN_FUSES | CANNOT_SET_RESOLVER | CANNOT_SET_TTL | CANNOT_CREATE_SUBDOMAIN | PARENT_CANNOT_CONTROL | CANNOT_APPROVE | CAN_EXTEND_EXPIRY;
 
-// fuses to burn whe second level domain is made immutable: <name>.eth
+// fuses to burn when second level domain is made immutable: <name>.eth
 uint16 constant ONLY_CHILD_FUSES = CANNOT_UNWRAP;
 
 uint64 constant MAX_UINT64 = type(uint64).max;
