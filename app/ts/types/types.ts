@@ -5,7 +5,7 @@ export type DomainInfo = {
 	registeryOwner: `0x${ string }`,
 	data: readonly [`0x${ string }`, number, bigint],
 	fuses: readonly EnsFuseName[],
-	expiry: bigint,
+	expiry: number,
 	label: string,
 	parentDomain: string,
 	subDomain: string,
