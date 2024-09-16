@@ -20,7 +20,7 @@ export class OptionalSignal<T> extends Signal<Signal<T> | undefined> {
 	public clear() {
 		this.value = undefined
 	}
-	
+
 	public get deepValue() {
 		const inner = this.value
 		if (inner === undefined) return undefined

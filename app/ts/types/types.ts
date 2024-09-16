@@ -41,7 +41,7 @@ export type ParentChecks = {
 
 export type CheckBoxes = readonly (FinalChildChecks | ParentChecks)[]
 
-export type EnsFuseName = 
+export type EnsFuseName =
 	| 'Cannot Unwrap Name'
 	| 'Cannot Burn Fuses'
 	| 'Cannot Transfer'
