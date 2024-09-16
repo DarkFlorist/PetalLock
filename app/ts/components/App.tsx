@@ -1,6 +1,6 @@
 import { Signal, useSignal } from '@preact/signals'
 import { useEffect, useRef } from 'preact/hooks'
-import { requestAccounts, isValidEnsSubDomain, doWeNeedToBurnParentFuses, doWeNeedToBurnChildFuses, isChildOwnershipOwnedByOpenRenewManager, getAccounts, getDomainInfos, isPetalLockAndOpenRenewalManagerDeployed, getOpenRenewalManagerAddress } from '../utils/ensUtils.js'
+import { requestAccounts, isValidEnsSubDomain, isChildOwnershipOwnedByOpenRenewManager, getAccounts, getDomainInfos, isPetalLockAndOpenRenewalManagerDeployed, getOpenRenewalManagerAddress, areRequiredFusesBurnt } from '../utils/ensUtils.js'
 import { BigSpinner } from './Spinner.js'
 import { ensureError } from '../utils/utilities.js'
 import { AccountAddress, CheckBoxes, DomainInfo, FinalChildChecks, ParentChecks } from '../types/types.js'
@@ -70,26 +70,27 @@ export function App() {
 			pathInfo.deepValue = newPathInfo
 			immutable.value = false
 			checkBoxes.deepValue = newPathInfo.map((currElement, index): FinalChildChecks | ParentChecks => {
+				const fusesBurned = areRequiredFusesBurnt(index, newPathInfo)
+				const base = {
+					exists: currElement.registered,
+					isWrapped: currElement.isWrapped,
+					fusesBurned,
+					domainInfo: currElement,
+				}
 				if (index === newPathInfo.length - 1) {
-					immutable.value = currElement.isWrapped && !doWeNeedToBurnChildFuses(currElement) && isChildOwnershipOwnedByOpenRenewManager(currElement)
+					immutable.value = currElement.isWrapped && fusesBurned && isChildOwnershipOwnedByOpenRenewManager(currElement)
 					return {
+						...base,
 						type: 'finalChild' as const,
-						exists: currElement.registered,
-						isWrapped: currElement.isWrapped,
-						fusesBurned: !doWeNeedToBurnChildFuses(currElement),
 						ownershipOpenRenewalContract: isChildOwnershipOwnedByOpenRenewManager(currElement),
-						immutable: currElement.isWrapped && !doWeNeedToBurnChildFuses(currElement) && isChildOwnershipOwnedByOpenRenewManager(currElement),
+						immutable: immutable.value,
 						contentHashIsSet: currElement.contentHash !== '0x',
-						domainInfo: currElement,
 						resolutionAddressIsSet: BigInt(currElement.resolutionAddress) !== 0n, 
 					}
 				}
 				return {
+					...base,
 					type: 'parent' as const,
-					exists: currElement.registered,
-					isWrapped: currElement.isWrapped,
-					fusesBurned: !doWeNeedToBurnParentFuses(currElement),
-					domainInfo: currElement,
 					openRenewalContractIsApproved: currElement.approved === getOpenRenewalManagerAddress()
 				}
 			})

@@ -5,7 +5,7 @@ import 'viem/window'
 import { ENS_REGISTRY_ABI } from '../abi/ens_registry_abi.js'
 import { splitDomainToSubDomainAndParent, splitEnsStringToSubdomainPath } from './utilities.js'
 import { ENS_PUBLIC_RESOLVER_ABI } from '../abi/ens_public_resolver_abi.js'
-import { CAN_DO_EVERYTHING, ENS_ETH_REGISTRAR_CONTROLLER, ENS_ETHEREUM_NAME_SERVICE, ENS_FLAGS, ENS_PUBLIC_RESOLVER, ENS_REGISTRY_WITH_FALLBACK, ENS_TOKEN_WRAPPER } from './constants.js'
+import { CAN_DO_EVERYTHING, ENS_ETH_REGISTRAR_CONTROLLER, ENS_ETHEREUM_NAME_SERVICE, ENS_FLAGS, ENS_PUBLIC_RESOLVER, ENS_REGISTRY_WITH_FALLBACK, ENS_TOKEN_WRAPPER, FINAL_CHILD_FUSES, MID_PARENT_FUSES, SINGLE_DOMAIN_FUSES, TOP_PARENT_FUSES } from './constants.js'
 import { AccountAddress, DomainInfo, EnsFuseName } from '../types/types.js'
 import { ENS_ETHEREUM_NAME_SERVICE_ABI } from '../abi/ens_ethereum_name_service_abi.js'
 import { tryEncodeContentHash } from './contenthash.js'
@@ -170,25 +170,22 @@ export const getDomainInfos = async (account: AccountAddress | undefined, name: 
 	}))
 }
 
-export const parentFusesToBurn = ['Cannot Unwrap Name', 'Cannot Approve'] as const
-
-export const doWeNeedToBurnParentFuses = (parentInfo: DomainInfo) => {
-	if (!parentInfo.isWrapped) return true
-	for (const requiredFuse of parentFusesToBurn) {
-		if (!parentInfo.fuses.includes(requiredFuse)) return true
-	}
-	return false
+export const getRequiredFuses = (domainIndex: number, domainInfos: readonly DomainInfo[]) => {
+	if (domainIndex === 0 && domainInfos.length === 1) return SINGLE_DOMAIN_FUSES
+	if (domainIndex === 0 && domainInfos.length > 1) return TOP_PARENT_FUSES
+	if (domainIndex === domainInfos.length - 1) return FINAL_CHILD_FUSES
+	return MID_PARENT_FUSES;
 }
 
-export const mandatoryChildFusesToBurn = ['Parent Domain Cannot Control'] as const
-
-export const childFusesToBurn = ['Cannot Unwrap Name', 'Cannot Burn Fuses', 'Cannot Set Resolver', 'Cannot Set Time To Live', 'Cannot Create Subdomain', 'Parent Domain Cannot Control', 'Cannot Approve', 'Can Extend Expiry'] as const
-export const doWeNeedToBurnChildFuses = (childInfo: DomainInfo) => {
-	if (!childInfo.isWrapped) return true
-	for (const requiredFuse of mandatoryChildFusesToBurn) {
-		if (!childInfo.fuses.includes(requiredFuse)) return true
+export const areRequiredFusesBurnt = (domainIndex: number, domainInfos: readonly DomainInfo[]) => {
+	const domainInfo = domainInfos[domainIndex]
+	if (domainInfo === undefined) throw new Error('wrong index')
+	if (!domainInfo.isWrapped) return false
+	const requiredFuses = getRequiredFuses(domainIndex, domainInfos)
+	for (const requiredFuse of requiredFuses) {
+		if (!domainInfo.fuses.includes(requiredFuse)) return false
 	}
-	return false
+	return true
 }
 
 export const isValidEnsSubDomain = (subdomain: string): boolean => {
