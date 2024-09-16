@@ -115,8 +115,7 @@ contract PetalLock {
 		require(ensRegistry.recordExists(pathToChild[0].node), 'PetalLock: The second level domain does not exist');
 		require(ensTokenWrapper.isWrapped(pathToChild[0].node), 'PetalLock: The second level domain is not wrapped');
 
-		uint256 finalChildIndex;
-		unchecked { finalChildIndex = pathToChildLength - 1; }
+		uint256 finalChildIndex = pathToChildLength - 1;
 		if (finalChildIndex != 0 && ensTokenWrapper.getApproved(uint256(pathToChild[0].node)) != OPEN_RENEWAL_MANAGER) {
 			ensTokenWrapper.approve(OPEN_RENEWAL_MANAGER, uint256(pathToChild[0].node));
 		}
@@ -153,8 +152,7 @@ contract PetalLock {
 				ensTokenWrapper.setFuses(pathToChild[0].node, TOP_PARENT_FUSES_TO_BURN);
 			}
 			// rest of the parents
-			uint256 nParents;
-			unchecked { nParents = pathToChildLength - 1; }
+			uint256 nParents = pathToChildLength - 1;
 			for (uint256 i = 1; i < nParents; i++) {
 				(, uint32 parentFuses,) = ensTokenWrapper.getData(uint256(pathToChild[i].node));
 				if (parentFuses & PARENT_FUSES_TO_BURN != PARENT_FUSES_TO_BURN) {
@@ -173,8 +171,7 @@ contract PetalLock {
 		ensTokenWrapper.safeTransferFrom(address(this), OPEN_RENEWAL_MANAGER, uint256(pathToChild[finalChildIndex].node), 1, bytes(''));
 
 		// return rest of the tokens to the sender
-		uint256 returnableTokensLength;
-		unchecked { returnableTokensLength = pathToChildLength - 1; }
+		uint256 returnableTokensLength = pathToChildLength - 1;
 		uint256[] memory returnableTokens = new uint256[](returnableTokensLength);
 		uint256[] memory returnableAmounts = new uint256[](returnableTokensLength);
 		for (uint256 i = 0; i < returnableTokensLength; i++) {
