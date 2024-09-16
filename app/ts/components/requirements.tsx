@@ -10,16 +10,16 @@ import { isAddress } from 'viem'
 import { YearPicker } from './YearPicker.js'
 
 interface SwitchAddressProps {
-	account: Signal<AccountAddress | undefined>
+	accountAddress: Signal<AccountAddress | undefined>
 	signingAddress: Signal<AccountAddress| undefined>
 	requirementsMet: boolean
 }
 
-export const SwitchAddress = ({ signingAddress, account, requirementsMet }: SwitchAddressProps) => {
+export const SwitchAddress = ({ signingAddress, accountAddress, requirementsMet }: SwitchAddressProps) => {
 	if (requirementsMet) return <></>
 	if (signingAddress.value === undefined) return <></>
 	if (BigInt(signingAddress.value) === 0n) return <></>
-	if (isSameAddress(account.value, signingAddress.value) ) return <></>
+	if (isSameAddress(accountAddress.value, signingAddress.value) ) return <></>
 	return <p class = 'paragraph' style = 'color: #b43c42'> { ` - Switch to ${ signingAddress } to sign` } </p>
 }
 
@@ -101,7 +101,7 @@ interface CreateProps {
 	handleResolutionAddressInput: (input: string) => void
 	loadingInfos: Signal<boolean>
 	immutable: Signal<boolean>
-	account: Signal<AccountAddress | undefined>
+	accountAddress: Signal<AccountAddress | undefined>
 	checkBoxes: OptionalSignal<CheckBoxes>
 	updateInfos: (showLoading: boolean) => Promise<void>
 	creating: Signal<boolean>
@@ -110,13 +110,13 @@ interface CreateProps {
 	extending: Signal<boolean>
 }
 
-export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos, immutable, handleContentHashInput, handleResolutionAddressInput, account, checkBoxes, updateInfos, creating, areContractsDeployed, extendYear, extending }: CreateProps) => {
+export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos, immutable, handleContentHashInput, handleResolutionAddressInput, accountAddress, checkBoxes, updateInfos, creating, areContractsDeployed, extendYear, extending }: CreateProps) => {
 	if (checkBoxes.deepValue === undefined) return <></>
 	const subDomain = checkBoxes.deepValue[checkBoxes.deepValue.length -1]?.domainInfo.subDomain
 	if (subDomain === undefined) throw new Error('missing subdomain')
 	const makeImmutable = async () => {
-		const acc = account.peek()
-		if (acc === undefined) throw new Error('missing account')
+		const acc = accountAddress.peek()
+		if (acc === undefined) throw new Error('missing accountAddress')
 		if (checkBoxes.deepValue === undefined) return
 		try {
 			creating.value = true
@@ -130,16 +130,16 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 	}
 
 	const deploy = async () => {
-		const acc = account.peek()
-		if (acc === undefined) throw new Error('missing account')
+		const acc = accountAddress.peek()
+		if (acc === undefined) throw new Error('missing accountAddress')
 		await deployPetalLockAndRenewalManager(acc)
 		await updateInfos(false)
 		areContractsDeployed.value = true
 	}
 
 	const renewByYear = async () => {
-		const acc = account.peek()
-		if (acc === undefined) throw new Error('missing account')
+		const acc = accountAddress.peek()
+		if (acc === undefined) throw new Error('missing accountAddress')
 		if (checkBoxes.deepValue === undefined) return
 		try {
 			extending.value = true
@@ -151,8 +151,8 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 	}
 
 	const renewToMax = async () => {
-		const acc = account.peek()
-		if (acc === undefined) throw new Error('missing account')
+		const acc = accountAddress.peek()
+		if (acc === undefined) throw new Error('missing accountAddress')
 		if (checkBoxes.deepValue === undefined) return
 		try {
 			extending.value = true
@@ -168,7 +168,7 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 		return checkBoxes.deepValue[0]?.domainInfo.owner
 	})
 
-	const rightAddress = computed(() => isSameAddress(signingAddress.value, account.value))
+	const rightAddress = computed(() => isSameAddress(signingAddress.value, accountAddress.value))
 	const validContenthash = computed(() => isValidContentHashString(contentHashInput.value.trim()))
 	const validResolutionAddress = computed(() => isAddress(resolutionAddressInput.value.trim()))
 	const wrappedIssues = computed(() => {
@@ -255,7 +255,7 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 			</div> : <>
 				<div style = 'padding: 10px; display: block;'>
 					{ domainExistIssue.value === undefined ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { domainExistIssue.value } </p> }
-					<SwitchAddress requirementsMet = { loadingInfos.value } account = { account } signingAddress = { signingAddress }/>
+					<SwitchAddress requirementsMet = { loadingInfos.value } accountAddress = { accountAddress } signingAddress = { signingAddress }/>
 					{ validContenthash.value || contentHashInput.value.length == 0 ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ` - Content hash is not valid` } </p> }
 					{ validResolutionAddress.value || resolutionAddressInput.value.length == 0 ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ` - Resolution address is not a valid address` } </p> }
 					{ validContenthash.value || validResolutionAddress.value ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ` - Set content hash or resolution address or both` } </p> }

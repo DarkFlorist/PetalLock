@@ -9,15 +9,15 @@ import { useOptionalSignal } from '../utils/OptionalSignal.js'
 import { getChainId } from '../utils/ensUtils.js'
 
 interface WalletComponentProps {
-	account: Signal<AccountAddress | undefined>
+	accountAddress: Signal<AccountAddress | undefined>
 }
 
-const WalletComponent = ({ account }: WalletComponentProps) => {
+const WalletComponent = ({ accountAddress }: WalletComponentProps) => {
 	const connect = async () => {
-		account.value = await requestAccounts()
+		accountAddress.value = await requestAccounts()
 	}
-	return account.value !== undefined ? (
-		<p style = 'color: gray; justify-self: right;'>{ `Connected with ${ account.value }` }</p>
+	return accountAddress.value !== undefined ? (
+		<p style = 'color: gray; justify-self: right;'>{ `Connected with ${ accountAddress.value }` }</p>
 	) : (
 		<button class = 'button is-primary' style = 'justify-self: right;' onClick = { connect }>
 			{ `Connect wallet` }
@@ -33,7 +33,7 @@ export function App() {
 	const loadingAccount = useSignal<boolean>(false)
 	const isWindowEthereum = useSignal<boolean>(true)
 	const areContractsDeployed = useSignal<boolean | undefined>(undefined)
-	const account = useSignal<AccountAddress | undefined>(undefined)
+	const accountAddress = useSignal<AccountAddress | undefined>(undefined)
 	const chainId = useSignal<number | undefined>(undefined)
 	const pathInfo = useOptionalSignal<DomainInfo[]>(undefined)
 	const immutable = useSignal<boolean>(false)
@@ -66,7 +66,7 @@ export function App() {
 			const ensSubDomain = inputValue.value.toLowerCase()
 			if (!isValidEnsSubDomain(ensSubDomain)) return
 			if (showLoading) loadingInfos.value = true
-			const newPathInfo = await getDomainInfos(account.value, ensSubDomain)
+			const newPathInfo = await getDomainInfos(accountAddress.value, ensSubDomain)
 			pathInfo.deepValue = newPathInfo
 			immutable.value = false
 			checkBoxes.deepValue = newPathInfo.map((currElement, index): FinalChildChecks | ParentChecks => {
@@ -125,7 +125,7 @@ export function App() {
 	}
 
 	const updateChainId = async () => {
-		const acc = account.peek()
+		const acc = accountAddress.peek()
 		if (acc === undefined) return
 		chainId.value = await getChainId(acc)
 	}
@@ -136,19 +136,19 @@ export function App() {
 			return
 		}
 		isWindowEthereum.value = true
-		window.ethereum.on('accountsChanged', function (accounts) { account.value = accounts[0] })
+		window.ethereum.on('accountsChanged', function (accounts) { accountAddress.value = accounts[0] })
 		window.ethereum.on('chainChanged', async () => { updateChainId() })
 		const fetchAccount = async () => {
 			try {
 				loadingAccount.value = true
 				const fetchedAccount = await getAccounts()
-				if (fetchedAccount) account.value = fetchedAccount
+				if (fetchedAccount) accountAddress.value = fetchedAccount
 				updateChainId()
 			} catch(e) {
 				setError(e)
 			} finally {
 				loadingAccount.value = false
-				areContractsDeployed.value = await isPetalLockAndOpenRenewalManagerDeployed(account.value)
+				areContractsDeployed.value = await isPetalLockAndOpenRenewalManagerDeployed(accountAddress.value)
 			}
 		}
 		fetchAccount()
@@ -162,13 +162,13 @@ export function App() {
 	useEffect(() => {
 		updateInfos(true)
 		updateChainId()
-	}, [account.value])
+	}, [accountAddress.value])
 
 	return <main>
 		<div class = 'app'>
 			{ !isWindowEthereum.value ? <p class = 'paragraph'> An Ethereum enabled wallet is required to make immutable domains.</p> : <></> }
 
-			{ !loadingAccount.value && isWindowEthereum.value ? <WalletComponent account = { account } /> : <></> }
+			{ !loadingAccount.value && isWindowEthereum.value ? <WalletComponent accountAddress = { accountAddress } /> : <></> }
 
 			<div style = 'display: block'>
 				<div class = 'petal-lock'>
@@ -204,7 +204,7 @@ export function App() {
 				handleResolutionAddressInput = { handleResolutionAddressInput }
 				loadingInfos = { loadingInfos }
 				immutable = { immutable }
-				account = { account }
+				accountAddress = { accountAddress }
 				checkBoxes = { checkBoxes }
 				updateInfos = { updateInfos }
 				creating = { creating }

@@ -47,25 +47,25 @@ export const getAccounts = async () => {
 	return reply[0]
 }
 
-const createReadClient = (account: AccountAddress | undefined) => {
-	if (window.ethereum === undefined || account === undefined) {
+const createReadClient = (accountAddress: AccountAddress | undefined) => {
+	if (window.ethereum === undefined || accountAddress === undefined) {
 		return createPublicClient({ chain: mainnet, transport: http('https://geth.dark.florist', { batch: { wait: 100 } }) })
 	}
 	return createWalletClient({ chain: mainnet, transport: custom(window.ethereum) }).extend(publicActions)
 }
 
-const createWriteClient = (account: AccountAddress) => {
+const createWriteClient = (accountAddress: AccountAddress) => {
 	if (window.ethereum === undefined) throw new Error('no window.ethereum injected')
-	if (account === undefined) throw new Error('no account!')
-	return createWalletClient({ account, chain: mainnet, transport: custom(window.ethereum) }).extend(publicActions)
+	if (accountAddress === undefined) throw new Error('no accountAddress!')
+	return createWalletClient({ account: accountAddress, chain: mainnet, transport: custom(window.ethereum) }).extend(publicActions)
 }
 
-export const getChainId = async (account: AccountAddress) => {
-	return await createWriteClient(account).getChainId()
+export const getChainId = async (accountAddress: AccountAddress) => {
+	return await createWriteClient(accountAddress).getChainId()
 }
 
-const getDomainInfo = async (account: AccountAddress | undefined, nameHash: `0x${ string }`, label: string, parentDomain: string, token: `0x${ string }`, subDomain: string): Promise<DomainInfo> => {
-	const client = createReadClient(account)
+const getDomainInfo = async (accountAddress: AccountAddress | undefined, nameHash: `0x${ string }`, label: string, parentDomain: string, token: `0x${ string }`, subDomain: string): Promise<DomainInfo> => {
+	const client = createReadClient(accountAddress)
 	const isWrappedPromise = client.readContract({
 		address: ENS_TOKEN_WRAPPER,
 		abi: ENS_WRAPPER_ABI,
@@ -159,14 +159,14 @@ const getDomainInfo = async (account: AccountAddress | undefined, nameHash: `0x$
 	}
 }
 
-export const getDomainInfos = async (account: AccountAddress | undefined, name: string): Promise<DomainInfo[]> => {
+export const getDomainInfos = async (accountAddress: AccountAddress | undefined, name: string): Promise<DomainInfo[]> => {
 	const subDomainPath = splitEnsStringToSubdomainPath(name)
 	return await Promise.all(subDomainPath.map((subDomain) => {
 		const [label, parentDomain] = splitDomainToSubDomainAndParent(subDomain)
 		if (label === undefined) throw new Error('undefined label')
 		const nameHash = namehash(subDomain)
 		const token = labelhash(subDomain.slice(0, subDomain.indexOf('.')))
-		return getDomainInfo(account, nameHash, label, parentDomain, token, subDomain)
+		return getDomainInfo(accountAddress, nameHash, label, parentDomain, token, subDomain)
 	}))
 }
 
@@ -200,8 +200,8 @@ export const isChildOwnershipOwnedByOpenRenewManager = (childInfo: DomainInfo) =
 
 export const proxyDeployerAddress = `0x7a0d94f55792c434d74a40883c6ed8545e406d12`
 
-export async function ensureProxyDeployerDeployed(account: AccountAddress): Promise<void> {
-	const wallet = createWriteClient(account)
+export async function ensureProxyDeployerDeployed(accountAddress: AccountAddress): Promise<void> {
+	const wallet = createWriteClient(accountAddress)
 	const deployerBytecode = await wallet.getCode({ address: proxyDeployerAddress })
 	if (deployerBytecode === '0x60003681823780368234f58015156014578182fd5b80825250506014600cf3') return
 	const ethSendHash = await wallet.sendTransaction({ to: '0x4c8d290a1b368ac4728d83a9e8321fc3af2b39b1', amount: 10000000000000000n })
@@ -220,24 +220,24 @@ export function getOpenRenewalManagerAddress() {
 	return getContractAddress({ bytecode, from: proxyDeployerAddress, opcode: 'CREATE2', salt: numberToBytes(0) })
 }
 
-const isOpenRenewalManagerDeployed = async (account: AccountAddress | undefined) => {
-	const wallet = createReadClient(account)
+const isOpenRenewalManagerDeployed = async (accountAddress: AccountAddress | undefined) => {
+	const wallet = createReadClient(accountAddress)
 	const expectedDeployedBytecode: `0x${ string }` = `0x${ petalLockContractArtifact.contracts['OpenRenewalManager.sol'].OpenRenewalManager.evm.deployedBytecode.object }`
 	const address = getOpenRenewalManagerAddress()
 	const deployedBytecode = await wallet.getCode({ address })
 	return deployedBytecode === expectedDeployedBytecode
 }
 
-const isPetalLockDeployed = async (account: AccountAddress | undefined) => {
-	const wallet = createReadClient(account)
+const isPetalLockDeployed = async (accountAddress: AccountAddress | undefined) => {
+	const wallet = createReadClient(accountAddress)
 	const expectedDeployedBytecode: `0x${ string }` = `0x${ petalLockContractArtifact.contracts['PetalLock.sol'].PetalLock.evm.deployedBytecode.object }`
 	const address = getPetalLockAddress()
 	const deployedBytecode = await wallet.getCode({ address })
 	return deployedBytecode === expectedDeployedBytecode
 }
 
-export const isPetalLockAndOpenRenewalManagerDeployed = async (account: AccountAddress | undefined) => {
-	return await isOpenRenewalManagerDeployed(account) && await isPetalLockDeployed(account)
+export const isPetalLockAndOpenRenewalManagerDeployed = async (accountAddress: AccountAddress | undefined) => {
+	return await isOpenRenewalManagerDeployed(accountAddress) && await isPetalLockDeployed(accountAddress)
 }
 
 export const deployPetalLockTransaction = () => {
@@ -250,12 +250,12 @@ export const deployOpenRenewalManagerTransaction = () => {
 	return { to: proxyDeployerAddress, data: bytecode } as const
 }
 
-export const deployPetalLockAndRenewalManager = async (account: AccountAddress) => {
-	const openRenewalManagerDeployed = await isOpenRenewalManagerDeployed(account)
-	const petalLockDeployed = await isPetalLockDeployed(account)
+export const deployPetalLockAndRenewalManager = async (accountAddress: AccountAddress) => {
+	const openRenewalManagerDeployed = await isOpenRenewalManagerDeployed(accountAddress)
+	const petalLockDeployed = await isPetalLockDeployed(accountAddress)
 	if (openRenewalManagerDeployed && petalLockDeployed) throw new Error('already deployed')
-	await ensureProxyDeployerDeployed(account)
-	const client = createWriteClient(account)
+	await ensureProxyDeployerDeployed(accountAddress)
+	const client = createWriteClient(accountAddress)
 	if (!openRenewalManagerDeployed) {
 		const hash = await client.sendTransaction(deployOpenRenewalManagerTransaction())
 		await client.waitForTransactionReceipt({ hash })
@@ -266,7 +266,7 @@ export const deployPetalLockAndRenewalManager = async (account: AccountAddress) 
 	}
 }
 
-export const getPetalLockUseTransaction = (petalLockAddress: AccountAddress, account: AccountAddress, subdomainRouteNames: string[], ownedTokens: bigint[], contentHash: string, resolutionAddress: string) => {
+export const getPetalLockUseTransaction = (petalLockAddress: AccountAddress, accountAddress: AccountAddress, subdomainRouteNames: string[], ownedTokens: bigint[], contentHash: string, resolutionAddress: string) => {
 	const labels = subdomainRouteNames.map((p) => {
 		const [label] = p.split('.')
 		if (label === undefined) throw new Error('Not a valid ENS sub domain')
@@ -301,26 +301,26 @@ export const getPetalLockUseTransaction = (petalLockAddress: AccountAddress, acc
 	], [pathToChild, encodedContentHash, decodedResolutionAddress])
 	return {
 		chain: mainnet,
-		account,
+		account: accountAddress,
 		address: ENS_TOKEN_WRAPPER,
 		abi: ENS_WRAPPER_ABI,
 		functionName: 'safeBatchTransferFrom',
-		args: [account, petalLockAddress, ownedTokens, ownedTokens.map(() => 1n), data]
+		args: [accountAddress, petalLockAddress, ownedTokens, ownedTokens.map(() => 1n), data]
 	} as const
 }
 
-export const callPetalLock = async (account: AccountAddress, domainInfos: DomainInfo[], contentHash: string, resolutionAddress: string) => {
-	const client = createWriteClient(account)
+export const callPetalLock = async (accountAddress: AccountAddress, domainInfos: DomainInfo[], contentHash: string, resolutionAddress: string) => {
+	const client = createWriteClient(accountAddress)
 	const petalLockAddress = getPetalLockAddress()
 	const subdomainRouteNames = domainInfos.map((x) => x.subDomain)
 	const ownedTokens = domainInfos.filter((info) => info.registered).map((info) => BigInt(info.nameHash))
-	const write = getPetalLockUseTransaction(petalLockAddress, account, subdomainRouteNames, ownedTokens, contentHash, resolutionAddress)
+	const write = getPetalLockUseTransaction(petalLockAddress, accountAddress, subdomainRouteNames, ownedTokens, contentHash, resolutionAddress)
 	const hash = await client.writeContract(write)
 	return await client.waitForTransactionReceipt({ hash })
 }
 
-export const renewDomainByYear = async (account: AccountAddress, extendYear: number, domainInfos: DomainInfo[]) => {
-	const client = createWriteClient(account)
+export const renewDomainByYear = async (accountAddress: AccountAddress, extendYear: number, domainInfos: DomainInfo[]) => {
+	const client = createWriteClient(accountAddress)
 	const petalLockAddress = getPetalLockAddress()
 	const extendSeconds = 365n * 24n * 60n * 60n * BigInt(extendYear)
 	const domainsAndSubDomains = domainInfos.map((domain) => ({
@@ -341,7 +341,7 @@ export const renewDomainByYear = async (account: AccountAddress, extendYear: num
 	const hash = await client.writeContract({
 		value: totalRentCost,
 		chain: mainnet,
-		account,
+		account: accountAddress,
 		address: petalLockAddress,
 		abi: PETAL_LOCK_ABI,
 		functionName: 'batchExtend',
@@ -350,8 +350,8 @@ export const renewDomainByYear = async (account: AccountAddress, extendYear: num
 	return await client.waitForTransactionReceipt({ hash })
 }
 
-export const renewDomainToMax = async (account: AccountAddress, domainInfos: DomainInfo[]) => {
-	const client = createWriteClient(account)
+export const renewDomainToMax = async (accountAddress: AccountAddress, domainInfos: DomainInfo[]) => {
+	const client = createWriteClient(accountAddress)
 	const petalLockAddress = getPetalLockAddress()
 	const domainsAndSubDomains = domainInfos.filter((x) => !x.fuses.includes('Is .eth domain')).map((domain) => ({
 		parentNode: namehash(domain.parentDomain),
@@ -361,7 +361,7 @@ export const renewDomainToMax = async (account: AccountAddress, domainInfos: Dom
 
 	const hash = await client.writeContract({
 		chain: mainnet,
-		account,
+		account: accountAddress,
 		address: petalLockAddress,
 		abi: PETAL_LOCK_ABI,
 		functionName: 'batchExtend',
