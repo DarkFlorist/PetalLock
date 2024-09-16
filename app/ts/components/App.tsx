@@ -1,23 +1,23 @@
-import { Signal, useSignal } from '@preact/signals'
+import { useSignal } from '@preact/signals'
 import { useEffect, useRef } from 'preact/hooks'
 import { requestAccounts, isValidEnsSubDomain, isChildOwnershipOwnedByOpenRenewManager, getAccounts, getDomainInfos, isPetalLockAndOpenRenewalManagerDeployed, getOpenRenewalManagerAddress, areRequiredFusesBurnt } from '../utils/ensUtils.js'
 import { BigSpinner } from './Spinner.js'
 import { ensureError } from '../utils/utilities.js'
 import { AccountAddress, CheckBoxes, DomainInfo, FinalChildChecks, ParentChecks } from '../types/types.js'
 import { Create, Immutable, Requirements } from './requirements.js'
-import { useOptionalSignal } from '../utils/OptionalSignal.js'
+import { OptionalSignal, useOptionalSignal } from '../utils/OptionalSignal.js'
 import { getChainId } from '../utils/ensUtils.js'
 
 interface WalletComponentProps {
-	accountAddress: Signal<AccountAddress | undefined>
+	maybeAccountAddress: OptionalSignal<AccountAddress>
 }
 
-const WalletComponent = ({ accountAddress }: WalletComponentProps) => {
+const WalletComponent = ({ maybeAccountAddress }: WalletComponentProps) => {
 	const connect = async () => {
-		accountAddress.value = await requestAccounts()
+		maybeAccountAddress.deepValue = await requestAccounts()
 	}
-	return accountAddress.value !== undefined ? (
-		<p style = 'color: gray; justify-self: right;'>{ `Connected with ${ accountAddress.value }` }</p>
+	return maybeAccountAddress.value !== undefined ? (
+		<p style = 'color: gray; justify-self: right;'>{ `Connected with ${ maybeAccountAddress.value }` }</p>
 	) : (
 		<button class = 'button is-primary' style = 'justify-self: right;' onClick = { connect }>
 			{ `Connect wallet` }
@@ -33,7 +33,7 @@ export function App() {
 	const loadingAccount = useSignal<boolean>(false)
 	const isWindowEthereum = useSignal<boolean>(true)
 	const areContractsDeployed = useSignal<boolean | undefined>(undefined)
-	const accountAddress = useSignal<AccountAddress | undefined>(undefined)
+	const maybeAccountAddress = useOptionalSignal<AccountAddress>(undefined)
 	const chainId = useSignal<number | undefined>(undefined)
 	const pathInfo = useOptionalSignal<DomainInfo[]>(undefined)
 	const immutable = useSignal<boolean>(false)
@@ -66,7 +66,7 @@ export function App() {
 			const ensSubDomain = inputValue.value.toLowerCase()
 			if (!isValidEnsSubDomain(ensSubDomain)) return
 			if (showLoading) loadingInfos.value = true
-			const newPathInfo = await getDomainInfos(accountAddress.value, ensSubDomain)
+			const newPathInfo = await getDomainInfos(maybeAccountAddress.deepValue, ensSubDomain)
 			pathInfo.deepValue = newPathInfo
 			immutable.value = false
 			checkBoxes.deepValue = newPathInfo.map((currElement, index): FinalChildChecks | ParentChecks => {
@@ -125,9 +125,9 @@ export function App() {
 	}
 
 	const updateChainId = async () => {
-		const acc = accountAddress.peek()
-		if (acc === undefined) return
-		chainId.value = await getChainId(acc)
+		const account = maybeAccountAddress.deepPeek()
+		if (account === undefined) return
+		chainId.value = await getChainId(account)
 	}
 
 	useEffect(() => {
@@ -136,19 +136,19 @@ export function App() {
 			return
 		}
 		isWindowEthereum.value = true
-		window.ethereum.on('accountsChanged', function (accounts) { accountAddress.value = accounts[0] })
+		window.ethereum.on('accountsChanged', function (accounts) { maybeAccountAddress.deepValue = accounts[0] })
 		window.ethereum.on('chainChanged', async () => { updateChainId() })
 		const fetchAccount = async () => {
 			try {
 				loadingAccount.value = true
 				const fetchedAccount = await getAccounts()
-				if (fetchedAccount) accountAddress.value = fetchedAccount
+				if (fetchedAccount) maybeAccountAddress.deepValue = fetchedAccount
 				updateChainId()
 			} catch(e) {
 				setError(e)
 			} finally {
 				loadingAccount.value = false
-				areContractsDeployed.value = await isPetalLockAndOpenRenewalManagerDeployed(accountAddress.value)
+				areContractsDeployed.value = await isPetalLockAndOpenRenewalManagerDeployed(maybeAccountAddress.deepValue)
 			}
 		}
 		fetchAccount()
@@ -162,13 +162,13 @@ export function App() {
 	useEffect(() => {
 		updateInfos(true)
 		updateChainId()
-	}, [accountAddress.value])
+	}, [maybeAccountAddress.value])
 
 	return <main>
 		<div class = 'app'>
 			{ !isWindowEthereum.value ? <p class = 'paragraph'> An Ethereum enabled wallet is required to make immutable domains.</p> : <></> }
 
-			{ !loadingAccount.value && isWindowEthereum.value ? <WalletComponent accountAddress = { accountAddress } /> : <></> }
+			{ !loadingAccount.value && isWindowEthereum.value ? <WalletComponent maybeAccountAddress = { maybeAccountAddress } /> : <></> }
 
 			<div style = 'display: block'>
 				<div class = 'petal-lock'>
@@ -204,7 +204,7 @@ export function App() {
 				handleResolutionAddressInput = { handleResolutionAddressInput }
 				loadingInfos = { loadingInfos }
 				immutable = { immutable }
-				accountAddress = { accountAddress }
+				maybeAccountAddress = { maybeAccountAddress }
 				checkBoxes = { checkBoxes }
 				updateInfos = { updateInfos }
 				creating = { creating }
