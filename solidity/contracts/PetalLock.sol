@@ -108,25 +108,24 @@ contract PetalLock {
 	}
 
 	function makeImmutable(address originalOwner, SubDomainLabelNode[] memory pathToChild, bytes memory contenthash, address resolutionAddress) private {
-		require(ensRegistry.recordExists(pathToChild[0].node), 'PetalLock: The first record need to exist');
-		require(ensTokenWrapper.isWrapped(pathToChild[0].node), 'PetalLock: The first record is not wrapped');
-		if (ensTokenWrapper.getApproved(uint256(pathToChild[0].node)) != OPEN_RENEWAL_MANAGER) {
+		require(ensRegistry.recordExists(pathToChild[0].node), 'PetalLock: The second level domain does not exist');
+		require(ensTokenWrapper.isWrapped(pathToChild[0].node), 'PetalLock: The second level domain is not wrapped');
+		uint256 finalChildIndex = pathToChild.length - 1;
+		if (finalChildIndex != 0 && ensTokenWrapper.getApproved(uint256(pathToChild[0].node)) != OPEN_RENEWAL_MANAGER) {
 			ensTokenWrapper.approve(OPEN_RENEWAL_MANAGER, uint256(pathToChild[0].node));
 		}
-		uint256 finalChildIndex = pathToChild.length - 1;
 		
 		// CREATE SUBDOMAINS // 
 		// create nodes and approve open renewal manager. Do not create the first domain, it needs to be created already
 		for (uint256 i = 1; i < pathToChild.length; i++) {
-			bytes32 parentNameHash = pathToChild[i - 1].node;
 			bytes32 node = pathToChild[i].node;
 			// check that the record exists, if not, lets create it
 			if (!ensRegistry.recordExists(node)) {
-				ensTokenWrapper.setSubnodeRecord(parentNameHash, pathToChild[i].label, address(this), ENS_PUBLIC_RESOLVER, 0, 0, MAX_UINT64);
+				ensTokenWrapper.setSubnodeRecord(pathToChild[i - 1].node, pathToChild[i].label, address(this), ENS_PUBLIC_RESOLVER, 0, 0, MAX_UINT64);
 				ensTokenWrapper.approve(OPEN_RENEWAL_MANAGER, uint256(node));
 			} else {
 				// the node needs to be wrapped
-				require(ensTokenWrapper.isWrapped(node), 'PetalLock: Node not wrapped');
+				require(ensTokenWrapper.isWrapped(node), 'PetalLock: Child node is not wrapped');
 				if (ensTokenWrapper.getApproved(uint256(node)) != OPEN_RENEWAL_MANAGER) {
 					ensTokenWrapper.approve(OPEN_RENEWAL_MANAGER, uint256(node));
 				}
@@ -137,33 +136,31 @@ contract PetalLock {
 		if (contenthash.length != 0) { ensPublicResolver.setContenthash(pathToChild[finalChildIndex].node, contenthash); }
 		if (resolutionAddress != address(0x0)) { ensPublicResolver.setAddr(pathToChild[finalChildIndex].node, resolutionAddress); }
 		
-		// BURN PARENT FUSES //
-		// burn top parent fuses if the top parent is not the same as final child
-		(, uint32 topParentFuses,) = ensTokenWrapper.getData(uint256(pathToChild[0].node));
-		if (finalChildIndex != 0 && topParentFuses & TOP_PARENT_FUSES_TO_BURN != TOP_PARENT_FUSES_TO_BURN) {
-			ensTokenWrapper.setFuses(pathToChild[0].node, TOP_PARENT_FUSES_TO_BURN);
-		}
-
-		// rest of the parents
-		for (uint256 i = 1; i < pathToChild.length - 1; i++) {
-			(, uint32 parentFuses,) = ensTokenWrapper.getData(uint256(pathToChild[i].node));
-			if (parentFuses & PARENT_FUSES_TO_BURN != PARENT_FUSES_TO_BURN) {
-				ensTokenWrapper.setChildFuses(pathToChild[i - 1].node, keccak256(abi.encodePacked(pathToChild[i].label)), PARENT_FUSES_TO_BURN, MAX_UINT64);
-			}
-		}
-
-		// BURN FINAL CHILD FUSES //
-		(, uint32 finalChildFuses,) = ensTokenWrapper.getData(uint256(pathToChild[finalChildIndex].node));
-		if (finalChildIndex == 0) { // only one node in the data (<name>.eth)
+		if (finalChildIndex == 0) { // the second level domain is made immutable
+			(, uint32 finalChildFuses,) = ensTokenWrapper.getData(uint256(pathToChild[finalChildIndex].node));
 			if (finalChildFuses & ONLY_CHILD_FUSES != ONLY_CHILD_FUSES) {
 				ensTokenWrapper.setFuses(pathToChild[0].node, ONLY_CHILD_FUSES);
 			}
 		} else {
+			(, uint32 topParentFuses,) = ensTokenWrapper.getData(uint256(pathToChild[0].node));
+			if (topParentFuses & TOP_PARENT_FUSES_TO_BURN != TOP_PARENT_FUSES_TO_BURN) {
+				ensTokenWrapper.setFuses(pathToChild[0].node, TOP_PARENT_FUSES_TO_BURN);
+			}
+			// rest of the parents
+			for (uint256 i = 1; i < pathToChild.length - 1; i++) {
+				(, uint32 parentFuses,) = ensTokenWrapper.getData(uint256(pathToChild[i].node));
+				if (parentFuses & PARENT_FUSES_TO_BURN != PARENT_FUSES_TO_BURN) {
+					ensTokenWrapper.setChildFuses(pathToChild[i - 1].node, keccak256(abi.encodePacked(pathToChild[i].label)), PARENT_FUSES_TO_BURN, MAX_UINT64);
+				}
+			}
+			
+			// burn the final child fuses
+			(, uint32 finalChildFuses,) = ensTokenWrapper.getData(uint256(pathToChild[finalChildIndex].node));
 			if (finalChildFuses & FINAL_CHILD_FUSES_TO_BURN != FINAL_CHILD_FUSES_TO_BURN) {
 				ensTokenWrapper.setChildFuses(pathToChild[finalChildIndex - 1].node, keccak256(abi.encodePacked(pathToChild[finalChildIndex].label)), FINAL_CHILD_FUSES_TO_BURN, MAX_UINT64);
 			}
 		}
-	
+
 		// move the final child to renewal manager, so it can be renewed by anyone (otherwise its technically burned)
 		ensTokenWrapper.safeTransferFrom(address(this), OPEN_RENEWAL_MANAGER, uint256(pathToChild[finalChildIndex].node), 1, bytes(''));
 		
@@ -198,7 +195,7 @@ contract PetalLock {
 	}
 	
 	// only ensRegistrarController should send eth to us (refund for renewals)
-	receive() external payable  {
+	receive() external payable {
 		require(msg.sender == ENS_ETH_REGISTRAR_CONTROLLER, 'PetalLock: do not send ETH to PetalLock');
 	}
 }
