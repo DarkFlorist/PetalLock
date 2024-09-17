@@ -1,4 +1,5 @@
 import { Signal } from '@preact/signals'
+import { JSX } from 'preact/jsx-runtime'
 
 export const YearPicker = ( { year, validYear }: { year: Signal<number>, validYear: Signal<boolean>  }) => {
 	const increment = () => {
@@ -9,8 +10,8 @@ export const YearPicker = ( { year, validYear }: { year: Signal<number>, validYe
 		year.value = Math.max(year.value - 1, 1)
 	}
 
-	const handleInputChange = (e: Event) => {
-		const inputValue = (e.target as HTMLInputElement).value
+	const handleInputChange = (event: JSX.TargetedEvent<HTMLInputElement, Event>) => {
+		const inputValue = event.currentTarget.value
 		const parsedYear = parseInt(inputValue, 10)
 		if (!isNaN(parsedYear) && parsedYear > 0) {
 			year.value = parsedYear
