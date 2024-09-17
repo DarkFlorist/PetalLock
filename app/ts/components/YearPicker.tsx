@@ -28,7 +28,7 @@ export const YearPicker = ( { year, validYear }: { year: Signal<number>, validYe
 					class = 'year-selector-counter-input'
 					maxLength = { 4 }
 					type = 'text'
-					value = { year.value }
+					value = { year }
 					onInput = { handleInputChange }
 				/>
 				<div class = 'year-selector-counter-num'>{ year.value }</div>
