@@ -31,7 +31,7 @@ export const YearPicker = ( { year, validYear }: { year: Signal<number>, validYe
 					value = { year }
 					onInput = { handleInputChange }
 				/>
-				<div class = 'year-selector-counter-num'>{ year.value }</div>
+				<div class = 'year-selector-counter-num'>{ year }</div>
 			</div>
 			<div class = 'year-selector-button year-selector-button-increment' onClick = { increment }>+</div>
 		</div>
