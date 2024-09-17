@@ -72,6 +72,11 @@ const ethSimulateTransactions = async (rpc: string, transactions: readonly Block
 
 const runTests = async () => {
 	console.log(`Reneval manager: ${ getOpenRenewalManagerAddress() }`)
+	const testOpenRenewalManagerAddressIsConstant = async () => {
+		const openRenewalManagerAddress = 0xE5f2F2e05260eF23FEDbf0Dc9c5004F1860C1Dc1n
+		const calculatedAddress = BigInt(getOpenRenewalManagerAddress())
+		if (calculatedAddress !== openRenewalManagerAddress) throw new Error(`The Address of Open Renewal Manager has changed to ${ addressString(calculatedAddress) }.`)
+	}
 	const testMakeImmutable = async () => {
 		const ownedTokens = [BigInt(namehash(subdomainRouteNames2[0]))] as const
 		const result = await ethSimulateTransactions(rpc, [makeImmutableDomain(subdomainRouteNames2, ownedTokens)])
@@ -607,6 +612,7 @@ const runTests = async () => {
 		}])
 		if (allSuccess(result)) throw new Error('transaction succeeded while it should fail')
 	}
+	await testOpenRenewalManagerAddressIsConstant()
 	await testMakeImmutable()
 	await testWeHaveTheOrignalToken()
 	await testThatFusesAreCorrect()

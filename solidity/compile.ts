@@ -21,14 +21,17 @@ const compilePetalLock = async () => {
 		settings: {
 			optimizer: {
 				enabled: true,
-				runs: 500
+				runs: 500,
+				details: {
+					inliner: true,
+				}
 			},
 			outputSelection: {
 				"*": {
 					'*': [ 'evm.bytecode.object', 'evm.deployedBytecode.object', 'abi' ]
 				}
-			}
-		}
+			},
+		},
 	}
 
 	var output = compile(JSON.stringify(input))
