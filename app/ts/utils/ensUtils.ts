@@ -147,7 +147,7 @@ const getDomainInfo = async (accountAddress: AccountAddress | undefined, nameHas
 		registeryOwner: await registeryOwnerPromise,
 		data,
 		fuses: extractENSFuses(BigInt(data[1])),
-		expiry: bigIntToNumber(data[2]),
+		expiry: new Date(bigIntToNumber(data[2]) * 1000),
 		label,
 		registered: await registeredPromise,
 		contentHash: await contentHashPromise,

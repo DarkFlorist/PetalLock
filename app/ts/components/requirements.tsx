@@ -86,7 +86,7 @@ export const Immutable = ( { checkBoxesArray } : { checkBoxesArray: Signal<Check
 		<div style = 'padding-top: 30px; padding-bottom: 30px; align-items: center; display: grid; width: 100%'>
 			{ checkBoxes.immutable ? <>
 				<p class = 'status-green'>
-					{`IMMUTABLE until ${ new Date(checkBoxes.domainInfo.expiry * 1000).toISOString() }` }
+					{`IMMUTABLE until ${ checkBoxes.domainInfo.expiry.toISOString() }` }
 				</p>
 			</>: <p class = 'status-red'> NOT IMMUTABLE </p> }
 		</div>
@@ -251,7 +251,7 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 					</div>
 					<div style = 'justify-content: center;'>
 						<p style = 'font-size: 24px;' >{ `Renew without renewing ${ checkBoxes.deepValue[0].domainInfo.subDomain }` }</p>
-						<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { extending.value } onClick = { renewToMax }> { `Renew to ${ new Date(checkBoxes.deepValue[0].domainInfo.expiry * 1000).toISOString().substring(0, 10) }` } { extending.value ? <Spinner/> : <></> }</button>
+						<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { extending.value } onClick = { renewToMax }> { `Renew to ${ checkBoxes.deepValue[0].domainInfo.expiry.toISOString().substring(0, 10) }` } { extending.value ? <Spinner/> : <></> }</button>
 					</div>
 				</> }
 			</div> : <>
