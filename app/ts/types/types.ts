@@ -1,5 +1,3 @@
-
-
 export type DomainInfo = {
 	isWrapped: boolean,
 	nameHash: `0x${ string }`

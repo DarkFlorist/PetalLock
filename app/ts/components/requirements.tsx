@@ -10,17 +10,17 @@ import { isAddress } from 'viem'
 import { YearPicker } from './YearPicker.js'
 
 interface SwitchAddressProps {
-	accountAddress: Signal<AccountAddress | undefined>
-	signingAddress: Signal<AccountAddress| undefined>
+	maybeAccountAddress: OptionalSignal<AccountAddress>
+	maybeSigningAddress: Signal<AccountAddress | undefined>
 	requirementsMet: boolean
 }
 
-export const SwitchAddress = ({ signingAddress, accountAddress, requirementsMet }: SwitchAddressProps) => {
+export const SwitchAddress = ({ maybeSigningAddress, maybeAccountAddress, requirementsMet }: SwitchAddressProps) => {
 	if (requirementsMet) return <></>
-	if (signingAddress.value === undefined) return <></>
-	if (BigInt(signingAddress.value) === 0n) return <></>
-	if (isSameAddress(accountAddress.value, signingAddress.value) ) return <></>
-	return <p class = 'paragraph' style = 'color: #b43c42'> { ` - Switch to ${ signingAddress } to sign` } </p>
+	if (maybeSigningAddress.value === undefined) return <></>
+	if (BigInt(maybeSigningAddress.value) === 0n) return <></>
+	if (isSameAddress(maybeAccountAddress.deepValue, maybeSigningAddress.value) ) return <></>
+	return <p class = 'paragraph' style = 'color: #b43c42'> { ` - Switch to ${ maybeSigningAddress } to sign` } </p>
 }
 
 
@@ -101,7 +101,7 @@ interface CreateProps {
 	handleResolutionAddressInput: (input: string) => void
 	loadingInfos: Signal<boolean>
 	immutable: Signal<boolean>
-	accountAddress: Signal<AccountAddress | undefined>
+	maybeAccountAddress: OptionalSignal<AccountAddress>
 	checkBoxes: OptionalSignal<CheckBoxes>
 	updateInfos: (showLoading: boolean) => Promise<void>
 	creating: Signal<boolean>
@@ -110,19 +110,19 @@ interface CreateProps {
 	extending: Signal<boolean>
 }
 
-export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos, immutable, handleContentHashInput, handleResolutionAddressInput, accountAddress, checkBoxes, updateInfos, creating, areContractsDeployed, extendYear, extending }: CreateProps) => {
+export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos, immutable, handleContentHashInput, handleResolutionAddressInput, maybeAccountAddress, checkBoxes, updateInfos, creating, areContractsDeployed, extendYear, extending }: CreateProps) => {
 	const isYearValid = useSignal<boolean>(true)
 
 	if (checkBoxes.deepValue === undefined) return <></>
 	const subDomain = checkBoxes.deepValue[checkBoxes.deepValue.length -1]?.domainInfo.subDomain
 	if (subDomain === undefined) throw new Error('missing subdomain')
 	const makeImmutable = async () => {
-		const acc = accountAddress.peek()
-		if (acc === undefined) throw new Error('missing accountAddress')
+		const account = maybeAccountAddress.peek()
+		if (account === undefined) throw new Error('missing maybeAccountAddress')
 		if (checkBoxes.deepValue === undefined) return
 		try {
 			creating.value = true
-			await callPetalLock(acc, checkBoxes.deepValue.map((value) => value.domainInfo), contentHashInput.value.trim(), resolutionAddressInput.value.trim())
+			await callPetalLock(account.value, checkBoxes.deepValue.map((value) => value.domainInfo), contentHashInput.value.trim(), resolutionAddressInput.value.trim())
 			await updateInfos(false)
 		} catch(e) {
 			throw e
@@ -132,20 +132,20 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 	}
 
 	const deploy = async () => {
-		const acc = accountAddress.peek()
-		if (acc === undefined) throw new Error('missing accountAddress')
-		await deployPetalLockAndRenewalManager(acc)
+		const account = maybeAccountAddress.peek()
+		if (account === undefined) throw new Error('missing maybeAccountAddress')
+		await deployPetalLockAndRenewalManager(account.value)
 		await updateInfos(false)
 		areContractsDeployed.value = true
 	}
 
 	const renewByYear = async () => {
-		const acc = accountAddress.peek()
-		if (acc === undefined) throw new Error('missing accountAddress')
+		const account = maybeAccountAddress.peek()
+		if (account === undefined) throw new Error('missing maybeAccountAddress')
 		if (checkBoxes.deepValue === undefined) return
 		try {
 			extending.value = true
-			await renewDomainByYear(acc, extendYear.value, checkBoxes.deepValue.map((value) => value.domainInfo))
+			await renewDomainByYear(account.value, extendYear.value, checkBoxes.deepValue.map((value) => value.domainInfo))
 			await updateInfos(false)
 		} finally {
 			extending.value = false
@@ -153,24 +153,24 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 	}
 
 	const renewToMax = async () => {
-		const acc = accountAddress.peek()
-		if (acc === undefined) throw new Error('missing accountAddress')
+		const account = maybeAccountAddress.peek()
+		if (account === undefined) throw new Error('missing maybeAccountAddress')
 		if (checkBoxes.deepValue === undefined) return
 		try {
 			extending.value = true
-			await renewDomainToMax(acc, checkBoxes.deepValue.map((value) => value.domainInfo))
+			await renewDomainToMax(account.value, checkBoxes.deepValue.map((value) => value.domainInfo))
 			await updateInfos(false)
 		} finally {
 			extending.value = false
 		}
 	}
 
-	const signingAddress = computed(() => {
+	const maybeSigningAddress = computed(() => {
 		if (checkBoxes.deepValue === undefined) return undefined
 		return checkBoxes.deepValue[0]?.domainInfo.owner
 	})
 
-	const rightAddress = computed(() => isSameAddress(signingAddress.value, accountAddress.value))
+	const rightAddress = computed(() => isSameAddress(maybeSigningAddress.value, maybeAccountAddress.deepValue))
 	const validContenthash = computed(() => isValidContentHashString(contentHashInput.value.trim()))
 	const validResolutionAddress = computed(() => isAddress(resolutionAddressInput.value.trim()))
 	const wrappedIssues = computed(() => {
@@ -257,7 +257,7 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 			</div> : <>
 				<div style = 'padding: 10px; display: block;'>
 					{ domainExistIssue.value === undefined ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { domainExistIssue.value } </p> }
-					<SwitchAddress requirementsMet = { loadingInfos.value } accountAddress = { accountAddress } signingAddress = { signingAddress }/>
+					<SwitchAddress requirementsMet = { loadingInfos.value } maybeAccountAddress = { maybeAccountAddress } maybeSigningAddress = { maybeSigningAddress }/>
 					{ validContenthash.value || contentHashInput.value.length == 0 ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ` - Content hash is not valid` } </p> }
 					{ validResolutionAddress.value || resolutionAddressInput.value.length == 0 ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ` - Resolution address is not a valid address` } </p> }
 					{ validContenthash.value || validResolutionAddress.value ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ` - Set content hash or resolution address or both` } </p> }
