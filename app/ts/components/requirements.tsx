@@ -1,4 +1,4 @@
-import { computed, Signal } from '@preact/signals'
+import { computed, Signal, useSignal } from '@preact/signals'
 import { AccountAddress, CheckBoxes, FinalChildChecks, ParentChecks } from '../types/types.js'
 import { ENS_TOKEN_WRAPPER } from '../utils/constants.js'
 import { callPetalLock, deployPetalLockAndRenewalManager, getOpenRenewalManagerAddress, getRequiredFuses, renewDomainByYear, renewDomainToMax } from '../utils/ensUtils.js'
@@ -111,6 +111,8 @@ interface CreateProps {
 }
 
 export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos, immutable, handleContentHashInput, handleResolutionAddressInput, accountAddress, checkBoxes, updateInfos, creating, areContractsDeployed, extendYear, extending }: CreateProps) => {
+	const isYearValid = useSignal<boolean>(true)
+
 	if (checkBoxes.deepValue === undefined) return <></>
 	const subDomain = checkBoxes.deepValue[checkBoxes.deepValue.length -1]?.domainInfo.subDomain
 	if (subDomain === undefined) throw new Error('missing subdomain')
@@ -240,8 +242,8 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 			{ immutable.value ? <div class = 'extend-dialog'>
 				<p style = 'white-space: nowrap; margin: 0; font-size: 24px; padding-bottom: 10px; justify-self: center;'>{ `Renew ${ subDomain }` }</p>
 				<div style = 'justify-content: center;'>
-					<p style = 'font-size: 24px;'> Renew by&nbsp;</p> <YearPicker year = { extendYear }/> <p style = 'font-size: 24px;'>&nbsp;years </p>
-					<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { extending.value } onClick = { renewByYear }> Renew { extending.value ? <Spinner/> : <></> }</button>
+					<p style = 'font-size: 24px;'> Renew by&nbsp;</p> <YearPicker validYear = { isYearValid } year = { extendYear }/> <p style = 'font-size: 24px;'>&nbsp;years </p>
+					<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { extending.value || !isYearValid.value } onClick = { renewByYear }> Renew { extending.value ? <Spinner/> : <></> }</button>
 				</div>
 				{ !level2DomainExpiryBiggerThanLowestLevelExpiry.value || checkBoxes.deepValue[0] === undefined ? <></> : <>
 					<div style = 'justify-content: center; font-size: 24px;'>

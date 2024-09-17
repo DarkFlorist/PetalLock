@@ -1,6 +1,6 @@
 *,
 *::before,
-*::after { 
+*::after {
 	box-sizing: border-box;
 }
 
@@ -223,7 +223,7 @@ button:disabled, button[disabled] {
 	content: "✔";
 }
 .check:hover {
-	cursor: pointer; 
+	cursor: pointer;
 	opacity: 0.8;
 }
 
@@ -259,13 +259,12 @@ button:disabled, button[disabled] {
 	display: flex;
 	align-items: center;
 	border-bottom: 1px solid #D5DCE6;
-	background-color: #fff;
 	border-radius: 5px;
 	font-size: 30px;
 }
 .year-selector-counter {
 	position: relative;
-	width: 1em;
+	width: 2em;
 	height: 1em;
 	color: #333C48;
 	text-align: center;
