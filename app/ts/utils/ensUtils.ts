@@ -3,7 +3,7 @@ import { mainnet } from 'viem/chains'
 import { ENS_WRAPPER_ABI } from '../abi/ens_wrapper_abi.js'
 import 'viem/window'
 import { ENS_REGISTRY_ABI } from '../abi/ens_registry_abi.js'
-import { splitDomainToSubDomainAndParent, splitEnsStringToSubdomainPath } from './utilities.js'
+import { bigIntToNumber, splitDomainToSubDomainAndParent, splitEnsStringToSubdomainPath } from './utilities.js'
 import { ENS_PUBLIC_RESOLVER_ABI } from '../abi/ens_public_resolver_abi.js'
 import { CAN_DO_EVERYTHING, ENS_ETH_REGISTRAR_CONTROLLER, ENS_ETHEREUM_NAME_SERVICE, ENS_FLAGS, ENS_PUBLIC_RESOLVER, ENS_REGISTRY_WITH_FALLBACK, ENS_TOKEN_WRAPPER, FINAL_CHILD_FUSES, MID_PARENT_FUSES, SINGLE_DOMAIN_FUSES, TOP_PARENT_FUSES } from './constants.js'
 import { AccountAddress, DomainInfo, EnsFuseName } from '../types/types.js'
@@ -147,7 +147,7 @@ const getDomainInfo = async (accountAddress: AccountAddress | undefined, nameHas
 		registeryOwner: await registeryOwnerPromise,
 		data,
 		fuses: extractENSFuses(BigInt(data[1])),
-		expiry: data[2],
+		expiry: new Date(bigIntToNumber(data[2]) * 1000),
 		label,
 		registered: await registeredPromise,
 		contentHash: await contentHashPromise,

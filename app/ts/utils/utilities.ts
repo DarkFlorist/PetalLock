@@ -91,3 +91,10 @@ export const splitDomainToSubDomainAndParent = (domain: string): [string, string
 	if (index === -1) throw new Error('not proper domain')
 	return [domain.slice(0, index), domain.slice(index + 1)]
 }
+
+export function bigIntToNumber(value: bigint): number {
+	if (value <= Number.MAX_SAFE_INTEGER && value >= Number.MIN_SAFE_INTEGER) {
+		return Number(value)
+	}
+	throw new Error(`Value: "${ value }" is out of bounds to be a Number.`)
+}
