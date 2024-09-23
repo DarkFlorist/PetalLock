@@ -202,7 +202,7 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 		const first = checkBoxes.deepValue[0]
 		const last = checkBoxes.deepValue[checkBoxes.deepValue.length - 1]
 		if (first === undefined || last == undefined) return false
-		return first.domainInfo.expiry !== last.domainInfo.expiry
+		return first.domainInfo.expiry.toISOString() !== last.domainInfo.expiry.toISOString()
 	})
 
 	return <>
