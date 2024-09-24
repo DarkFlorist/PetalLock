@@ -36,7 +36,7 @@ FROM debian:12.6-slim@sha256:39868a6f452462b70cf720a8daff250c63e7342970e749059c1
 
 # Add curl to the base image (7.88.1-10+deb12u6)
 # Add jq to the base image (1.6-2.1)
-RUN apt-get update && apt-get install -y curl=7.88.1-10+deb12u6 jq=1.6-2.1
+RUN apt-get update && apt-get install -y curl=7.88.1-10+deb12u7 jq=1.6-2.1
 
 # Install kubo and initialize ipfs
 COPY --from=ipfs-kubo /usr/local/bin/ipfs /usr/local/bin/ipfs
