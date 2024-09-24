@@ -10,19 +10,18 @@ COPY ./package-lock.json /source/package-lock.json
 WORKDIR /source
 RUN npm ci
 
-# Run the vendoring script
+# Run the vendoring script, compile contracts and build
 COPY ./build/ /source/build/
 COPY ./tsconfig.vendor.json /source/tsconfig.vendor.json
 COPY ./app/index.html /source/app/index.html
-RUN npm run vendor
-
-# Buld the app
 COPY ./tsconfig.json /source/tsconfig.json
 COPY ./app/css/ /source/app/css/
 COPY ./app/ts/ /source/app/ts/
 COPY ./app/favicon.ico /source/app/favicon.ico
 COPY ./app/favicon.svg /source/app/favicon.svg
-RUN npm run build
+COPY ./solidity/ /source/solidity
+
+RUN npm run setup
 
 # --------------------------------------------------------
 # Base Image: Create the base image that will host the app
