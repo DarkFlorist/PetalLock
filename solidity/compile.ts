@@ -36,8 +36,8 @@ const compilePetalLock = async () => {
 
 	var output = compile(JSON.stringify(input))
 	const artifactsDir = path.join(process.cwd(), 'artifacts')
-	if (!exists(artifactsDir)) await fs.mkdir(artifactsDir, { recursive: false })
-	fs.writeFile('artifacts/PetalLock.json', output)
+	if (!await exists(artifactsDir)) await fs.mkdir(artifactsDir, { recursive: false })
+	await fs.writeFile(path.join(artifactsDir, 'PetalLock.json'), output)
 }
 
 compilePetalLock().catch(error => {
