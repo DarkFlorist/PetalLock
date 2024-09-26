@@ -245,12 +245,12 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 	})
 
 	if (checkBoxes.deepValue === undefined) return <></>
-	const subDomain = checkBoxes.deepValue[checkBoxes.deepValue.length - 1]?.domainInfo.subDomain
+	const finalChild = checkBoxes.deepValue[checkBoxes.deepValue.length - 1]
+	const subDomain = finalChild?.domainInfo.subDomain
 	if (subDomain === undefined) throw new Error('missing subdomain')
-
 	return <div style = 'padding-top: 10px;'>
 		{ immutable.value ? <div key = 'dialog' class = 'extend-dialog'>
-			{ !(checkBoxes.deepValue[0]?.type === 'finalChild' && checkBoxes.deepValue[0].ownershipOpenRenewalContract) ? <div style = 'justify-content: center;'> <p class = 'paragraph' style = 'color: #b43c42'> { `Warning: ${ subDomain } cannot be renewed. It will become mutable when expired.` } </p> </div>: <>
+			{ !(finalChild?.type === 'finalChild' && finalChild.ownershipOpenRenewalContract) ? <div style = 'justify-content: center;'> <p class = 'paragraph' style = 'color: #b43c42'> { `Warning: ${ subDomain } cannot be renewed. It will become mutable when expired.` } </p> </div>: <>
 				<p style = 'white-space: nowrap; margin: 0; font-size: 24px; padding-bottom: 10px; justify-self: center;'>{ `Renew ${ subDomain }` }</p>
 				<div style = 'justify-content: center;'>
 					<p style = 'font-size: 24px;'> Renew by&nbsp;</p> <YearPicker validYear = { isYearValid } year = { extendYear }/> <p style = 'font-size: 24px;'>&nbsp;years </p>
