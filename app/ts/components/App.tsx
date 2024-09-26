@@ -1,6 +1,6 @@
 import { Signal, useSignal } from '@preact/signals'
 import { useEffect, useRef } from 'preact/hooks'
-import { requestAccounts, isValidEnsSubDomain, isChildOwnershipOwnedByOpenRenewManager, getAccounts, getDomainInfos, isPetalLockAndOpenRenewalManagerDeployed, getOpenRenewalManagerAddress, areRequiredFusesBurnt } from '../utils/ensUtils.js'
+import { requestAccounts, isValidEnsSubDomain, isChildOwnershipOwnedByOpenRenewManager, getAccounts, getDomainInfos, isPetalLockAndOpenRenewalManagerDeployed, getOpenRenewalManagerAddress, areRequiredFusesBurntWithoutApproval, isChildOwnershipGivenAway } from '../utils/ensUtils.js'
 import { BigSpinner } from './Spinner.js'
 import { ensureError } from '../utils/utilities.js'
 import { AccountAddress, CheckBoxes, DomainInfo, FinalChildChecks, ParentChecks } from '../types/types.js'
@@ -112,7 +112,7 @@ export function App() {
 			pathInfo.deepValue = newPathInfo
 			immutable.value = false
 			checkBoxes.deepValue = newPathInfo.map((currElement, index): FinalChildChecks | ParentChecks => {
-				const fusesBurned = areRequiredFusesBurnt(index, newPathInfo)
+				const fusesBurned = areRequiredFusesBurntWithoutApproval(index, newPathInfo)
 				const base = {
 					exists: currElement.registered,
 					isWrapped: currElement.isWrapped,
@@ -120,11 +120,12 @@ export function App() {
 					domainInfo: currElement,
 				}
 				if (index === newPathInfo.length - 1) {
-					immutable.value = currElement.isWrapped && fusesBurned && isChildOwnershipOwnedByOpenRenewManager(currElement)
+					immutable.value = currElement.isWrapped && fusesBurned && isChildOwnershipGivenAway(currElement)
 					return {
 						...base,
 						type: 'finalChild' as const,
 						ownershipOpenRenewalContract: isChildOwnershipOwnedByOpenRenewManager(currElement),
+						childOwnershipIsGivenAway: isChildOwnershipGivenAway(currElement),
 						immutable: immutable.value,
 						contentHashIsSet: currElement.contentHash !== '0x',
 						resolutionAddressIsSet: BigInt(currElement.resolutionAddress) !== 0n,
@@ -133,7 +134,7 @@ export function App() {
 				return {
 					...base,
 					type: 'parent' as const,
-					openRenewalContractIsApproved: currElement.approved === getOpenRenewalManagerAddress()
+					openRenewalContractIsApproved: currElement.approved === getOpenRenewalManagerAddress() && currElement.fuses.includes('Cannot Approve')
 				}
 			})
 			console.log('updated to', ensSubDomain)

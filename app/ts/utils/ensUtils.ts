@@ -170,18 +170,24 @@ export const getDomainInfos = async (accountAddress: AccountAddress | undefined,
 	}))
 }
 
-export const getRequiredFuses = (domainIndex: number, domainInfos: readonly DomainInfo[]) => {
-	if (domainIndex === 0 && domainInfos.length === 1) return SINGLE_DOMAIN_FUSES
-	if (domainIndex === 0 && domainInfos.length > 1) return TOP_PARENT_FUSES
-	if (domainIndex === domainInfos.length - 1) return FINAL_CHILD_FUSES
-	return MID_PARENT_FUSES;
+export const getRequiredFusesWithoutApproval = (domainIndex: number, domainInfos: readonly DomainInfo[]) => {
+	return getRequiredFusesWithApproval(domainIndex, domainInfos).filter((fuse) => fuse !== 'Cannot Approve' && fuse !== 'Can Extend Expiry')
 }
 
-export const areRequiredFusesBurnt = (domainIndex: number, domainInfos: readonly DomainInfo[]) => {
+export const getRequiredFusesWithApproval = (domainIndex: number, domainInfos: readonly DomainInfo[]) => {
+	console.log('getRequiredFusesWithApproval')
+	console.log(domainInfos)
+	if (domainInfos.length === 1) return SINGLE_DOMAIN_FUSES
+	if (domainIndex === 0 && domainInfos.length > 1) return TOP_PARENT_FUSES
+	if (domainIndex === domainInfos.length - 1) return FINAL_CHILD_FUSES
+	return MID_PARENT_FUSES
+}
+
+export const areRequiredFusesBurntWithoutApproval = (domainIndex: number, domainInfos: readonly DomainInfo[]) => {
 	const domainInfo = domainInfos[domainIndex]
 	if (domainInfo === undefined) throw new Error('wrong index')
 	if (!domainInfo.isWrapped) return false
-	const requiredFuses = getRequiredFuses(domainIndex, domainInfos)
+	const requiredFuses = getRequiredFusesWithoutApproval(domainIndex, domainInfos)
 	for (const requiredFuse of requiredFuses) {
 		if (!domainInfo.fuses.includes(requiredFuse)) return false
 	}
@@ -196,6 +202,18 @@ export const isValidEnsSubDomain = (subdomain: string): boolean => {
 
 export const isChildOwnershipOwnedByOpenRenewManager = (childInfo: DomainInfo) => {
 	return BigInt(getOpenRenewalManagerAddress()) === BigInt(childInfo.owner) && childInfo.isWrapped
+}
+
+export const isChildOwnershipGivenAway = (childInfo: DomainInfo) => {
+	const owner = BigInt(childInfo.owner)
+	const renewalManager = BigInt(getOpenRenewalManagerAddress())
+	const burnAddresses = [
+		0x0000000000000000000000000000000000000000n,
+		0x000000000000000000000000000000000000deadn,
+		0xdead000000000000000000000000000000000000n,
+		0xdeaDDeADDEaDdeaDdEAddEADDEAdDeadDEADDEaDn
+	]
+	return (renewalManager === owner || burnAddresses.includes(owner)) && childInfo.isWrapped
 }
 
 export const proxyDeployerAddress = `0x7a0d94f55792c434d74a40883c6ed8545e406d12`
