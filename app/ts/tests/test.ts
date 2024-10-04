@@ -73,7 +73,7 @@ const ethSimulateTransactions = async (rpc: string, transactions: readonly Block
 const runTests = async () => {
 	console.log(`Reneval manager: ${ getOpenRenewalManagerAddress() }`)
 	const testOpenRenewalManagerAddressIsConstant = async () => {
-		const openRenewalManagerAddress = 0x936Bf81AfE1d781Ed58378f818b84BC52a80b5A1n
+		const openRenewalManagerAddress = 0x3e9037Cad6fCafA2e958C2e60856D86eAF8A5308n
 		const calculatedAddress = BigInt(getOpenRenewalManagerAddress())
 		if (calculatedAddress !== openRenewalManagerAddress) throw new Error(`The Address of Open Renewal Manager has changed to ${ addressString(calculatedAddress) }.`)
 	}

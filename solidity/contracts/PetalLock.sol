@@ -8,7 +8,7 @@ address constant ENS_REGISTRY_WITH_FALLBACK = 0x00000000000C2E074eC69A0dFb2997BA
 address constant ENS_ETH_REGISTRAR_CONTROLLER = 0x253553366Da8546fC250F225fe3d25d0C782303b;
 
 // Open Renewal Manager contract address
-address constant OPEN_RENEWAL_MANAGER = 0x936Bf81AfE1d781Ed58378f818b84BC52a80b5A1;
+address constant OPEN_RENEWAL_MANAGER = 0x3e9037Cad6fCafA2e958C2e60856D86eAF8A5308;
 
 // ENS Fuses
 uint16 constant CANNOT_UNWRAP = 1;
@@ -131,12 +131,17 @@ contract PetalLock {
 
 		// CREATE SUBDOMAINS //
 		// create nodes and approve open renewal manager. Do not create the first domain, it needs to be created already
+		uint256 createdSubdomains = 0;
+		uint256[] memory createdSubDomainNodesAndZeros = new uint256[](pathLength);
+		createdSubDomainNodesAndZeros[0] = uint256(nodePathToChild[0]);
 		for (uint256 i = 1; i < pathLength; i++) {
 			bytes32 node = nodePathToChild[i];
 			// check that the record exists, if not, lets create it
 			if (!ensRegistry.recordExists(node)) {
 				ensNameWrapper.setSubnodeRecord(nodePathToChild[i - 1], labelPathToChild[i], address(this), ENS_PUBLIC_RESOLVER, 0, 0, MAX_UINT64);
 				ensNameWrapper.approve(OPEN_RENEWAL_MANAGER, uint256(node));
+				createdSubDomainNodesAndZeros[createdSubdomains] = uint256(node);
+				createdSubdomains++;
 			} else {
 				// the node needs to be wrapped
 				require(ensNameWrapper.isWrapped(node), 'PetalLock: Child node is not wrapped');
@@ -145,13 +150,13 @@ contract PetalLock {
 				}
 			}
 		}
-
+		bytes32 finalChildNode = nodePathToChild[finalChildIndex];
 		// set content hash and address
-		if (contenthash.length != 0) { ensPublicResolver.setContenthash(nodePathToChild[finalChildIndex], contenthash); }
-		if (resolutionAddress != address(0x0)) { ensPublicResolver.setAddr(nodePathToChild[finalChildIndex], resolutionAddress); }
+		if (contenthash.length != 0) { ensPublicResolver.setContenthash(finalChildNode, contenthash); }
+		if (resolutionAddress != address(0x0)) { ensPublicResolver.setAddr(finalChildNode, resolutionAddress); }
 
 		if (finalChildIndex == 0) { // the second level domain is made immutable
-			(, uint32 finalChildFuses,) = ensNameWrapper.getData(uint256(nodePathToChild[finalChildIndex]));
+			(, uint32 finalChildFuses,) = ensNameWrapper.getData(uint256(finalChildNode));
 			if (finalChildFuses & ONLY_CHILD_FUSES != ONLY_CHILD_FUSES) {
 				ensNameWrapper.setFuses(nodePathToChild[0], ONLY_CHILD_FUSES);
 			}
@@ -170,22 +175,33 @@ contract PetalLock {
 			}
 
 			// burn the final child fuses
-			(, uint32 finalChildFuses,) = ensNameWrapper.getData(uint256(nodePathToChild[finalChildIndex]));
+			(, uint32 finalChildFuses,) = ensNameWrapper.getData(uint256(finalChildNode));
 			if (finalChildFuses & FINAL_CHILD_FUSES_TO_BURN != FINAL_CHILD_FUSES_TO_BURN) {
 				ensNameWrapper.setChildFuses(nodePathToChild[finalChildIndex - 1], keccak256(abi.encodePacked(labelPathToChild[finalChildIndex])), FINAL_CHILD_FUSES_TO_BURN, MAX_UINT64);
 			}
 		}
 
 		// move the final child to renewal manager, so it can be renewed by anyone (otherwise its technically burned)
-		ensNameWrapper.safeTransferFrom(address(this), OPEN_RENEWAL_MANAGER, uint256(nodePathToChild[finalChildIndex]), 1, bytes(''));
+		ensNameWrapper.safeTransferFrom(address(this), OPEN_RENEWAL_MANAGER, uint256(finalChildNode), 1, bytes(''));
 
 		// return rest of the tokens to the sender
-		uint256 returnableTokensLength = pathLength - 1;
+		uint256 returnableTokensLength = createdSubdomains + idsLength - 1; // return all except the final child
 		uint256[] memory returnableTokens = new uint256[](returnableTokensLength);
 		uint256[] memory returnableAmounts = new uint256[](returnableTokensLength);
-		for (uint256 i = 0; i < returnableTokensLength; i++) {
-			returnableTokens[i] = uint256(nodePathToChild[i]);
-			returnableAmounts[i] = 1;
+		uint256 returnableTokenIndex = 0;
+
+		for (uint256 i = 0; i < pathLength; i++) {
+			if (createdSubDomainNodesAndZeros[i] == 0) continue;
+			if (createdSubDomainNodesAndZeros[i] == uint256(finalChildNode)) continue;
+			returnableTokens[returnableTokenIndex] = createdSubDomainNodesAndZeros[i];
+			returnableAmounts[returnableTokenIndex] = 1;
+			returnableTokenIndex++;
+		}
+		for (uint256 idIndex = 0; idIndex < idsLength; idIndex++) {
+			if (tokenIds[idIndex] == uint256(finalChildNode)) continue;
+			returnableTokens[returnableTokenIndex] = tokenIds[idIndex];
+			returnableAmounts[returnableTokenIndex] = 1;
+			returnableTokenIndex++;
 		}
 
 		ensNameWrapper.safeBatchTransferFrom(address(this), originalOwner, returnableTokens, returnableAmounts, bytes(''));
