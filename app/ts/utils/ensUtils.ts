@@ -272,33 +272,15 @@ export const getPetalLockUseTransaction = (petalLockAddress: AccountAddress, acc
 		if (label === undefined) throw new Error('Not a valid ENS sub domain')
 		return label
 	})
-	const subdomainRouteNodes = subdomainRouteNames.map((pathPart) => namehash(pathPart))
 	const encodedContentHash = contentHash === '' ? '0x' : tryEncodeContentHash(contentHash)
 	if (encodedContentHash === undefined) throw new Error('Unable to decode content hash')
 	if (resolutionAddress.length > 0 && !isAddress(resolutionAddress, { strict: true })) throw new Error('Resolution address is not valid')
 	const decodedResolutionAddress = resolutionAddress === '' ? '0x0000000000000000000000000000000000000000' : getAddress(resolutionAddress)
-
-	if (subdomainRouteNodes[0] === undefined) throw new Error('Not a valid ENS sub domain')
-
-	const subDomainLabelNode = [
-		{ name: 'label', type: 'string' },
-		{ name: 'node', type: 'bytes32' }
-	] as const
-
-	const pathToChild: { label: string, node: `0x${ string }` }[] = []
-	for (let i = 0; i < labels.length; i++) {
-		const labelAtIndex = labels[i]
-		const nodeAtIndex = subdomainRouteNodes[i]
-		if (labelAtIndex === undefined) throw new Error('missing label at index')
-		if (nodeAtIndex === undefined) throw new Error('missing node at index')
-		pathToChild.push({ label: labelAtIndex, node: nodeAtIndex })
-	}
-
 	const data = encodeAbiParameters([
-		{ name: 'pathToChild', components: subDomainLabelNode, type: 'tuple[]' },
+		{ name: 'labelPathToChild', type: 'string[]' },
 		{ name: 'contenthash', type: 'bytes' },
 		{ name: 'resolutionAddress', type: 'address' },
-	], [pathToChild, encodedContentHash, decodedResolutionAddress])
+	], [labels, encodedContentHash, decodedResolutionAddress])
 	return {
 		chain: mainnet,
 		account: accountAddress,
