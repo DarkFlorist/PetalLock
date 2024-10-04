@@ -41,19 +41,11 @@ const LoadingSpinner = ({ loading }: LoadingSpinnerProps) => {
 
 interface ErrorComponentProps {
 	show: boolean
-	message: string
+	message: string | OptionalSignal<string>
 }
 const ErrorComponent = ({ show, message }: ErrorComponentProps) => {
 	if (show === false) return <></>
 	return <p class = 'error-component'> { message } </p>
-}
-
-interface ErrorComponentSignalProps {
-	message: OptionalSignal<string>
-}
-const ErrorComponentSignal = ({ message }: ErrorComponentSignalProps) => {
-	if (message.deepValue === undefined) return <></>
-	return <p class = 'error-component'> { message.deepValue } </p>
 }
 
 interface EnsRegistryErrorProps {
@@ -136,7 +128,6 @@ export function App() {
 					openRenewalContractIsApproved: currElement.approved === getOpenRenewalManagerAddress()
 				}
 			})
-			console.log('updated to', ensSubDomain)
 			errorString.value = undefined
 		} catch(e: unknown) {
 			setError(e)
@@ -227,7 +218,7 @@ export function App() {
 			/>
 
 			<LoadingSpinner loading = { loadingInfos.value === true || loadingAccount.value }/>
-			<ErrorComponentSignal message = { errorString }/>
+			<ErrorComponent message = { errorString } show = { errorString.deepValue !== undefined } />
 			<ErrorComponent show = { chainId.value !== undefined && chainId.value !== 1 } message = { 'PetalLock functions only on Ethereum Mainnet. Please switch to Ethereum Mainnet.' }/>
 			<EnsRegistryError checkBoxes = { checkBoxes } />
 			<Immutable checkBoxesArray = { checkBoxes } />
