@@ -19,6 +19,7 @@ const compilePetalLock = async () => {
 			'OpenRenewalManager.sol': { content: await fs.readFile('contracts/OpenRenewalManager.sol', 'utf8') },
 		},
 		settings: {
+			viaIR: true,
 			optimizer: {
 				enabled: true,
 				runs: 500,
