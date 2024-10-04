@@ -133,7 +133,6 @@ contract PetalLock {
 		// create nodes and approve open renewal manager. Do not create the first domain, it needs to be created already
 		uint256 createdSubdomains = 0;
 		uint256[] memory createdSubDomainNodesAndZeros = new uint256[](pathLength);
-		createdSubDomainNodesAndZeros[0] = uint256(nodePathToChild[0]);
 		for (uint256 i = 1; i < pathLength; i++) {
 			bytes32 node = nodePathToChild[i];
 			// check that the record exists, if not, lets create it
