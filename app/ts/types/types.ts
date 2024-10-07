@@ -22,6 +22,7 @@ export type FinalChildChecks = {
 	isWrapped: boolean,
 	fusesBurned: boolean,
 	ownershipOpenRenewalContract: boolean,
+	childOwnershipIsGivenAway: boolean,
 	immutable: boolean,
 	contentHashIsSet: boolean,
 	domainInfo: DomainInfo,
