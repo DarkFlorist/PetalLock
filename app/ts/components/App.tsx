@@ -1,6 +1,6 @@
-import { useSignal } from '@preact/signals'
+import { Signal, useSignal } from '@preact/signals'
 import { useEffect, useRef } from 'preact/hooks'
-import { requestAccounts, isValidEnsSubDomain, isChildOwnershipOwnedByOpenRenewManager, getAccounts, getDomainInfos, isPetalLockAndOpenRenewalManagerDeployed, getOpenRenewalManagerAddress, areRequiredFusesBurnt } from '../utils/ensUtils.js'
+import { requestAccounts, isValidEnsSubDomain, isChildOwnershipOwnedByOpenRenewManager, getAccounts, getDomainInfos, isPetalLockAndOpenRenewalManagerDeployed, getOpenRenewalManagerAddress, areRequiredFusesBurntWithoutApproval, isChildOwnershipGivenAway } from '../utils/ensUtils.js'
 import { BigSpinner } from './Spinner.js'
 import { ensureError } from '../utils/utilities.js'
 import { AccountAddress, CheckBoxes, DomainInfo, FinalChildChecks, ParentChecks } from '../types/types.js'
@@ -10,9 +10,13 @@ import { getChainId } from '../utils/ensUtils.js'
 
 interface WalletComponentProps {
 	maybeAccountAddress: OptionalSignal<AccountAddress>
+	loadingAccount: Signal<boolean>
+	isWindowEthereum: Signal<boolean>
 }
 
-const WalletComponent = ({ maybeAccountAddress }: WalletComponentProps) => {
+const WalletComponent = ({ maybeAccountAddress, loadingAccount, isWindowEthereum }: WalletComponentProps) => {
+	if (!isWindowEthereum.value) return <p class = 'paragraph'> An Ethereum enabled wallet is required to make immutable domains.</p>
+	if (loadingAccount.value) return <></>
 	const connect = async () => {
 		maybeAccountAddress.deepValue = await requestAccounts()
 	}
@@ -23,6 +27,35 @@ const WalletComponent = ({ maybeAccountAddress }: WalletComponentProps) => {
 			{ `Connect wallet` }
 		</button>
 	)
+}
+
+interface LoadingSpinnerProps {
+	loading: boolean
+}
+const LoadingSpinner = ({ loading }: LoadingSpinnerProps) => {
+	if (loading === false) return <></>
+	return <div style = 'max-width: fit-content; margin-inline: auto; padding: 20px;'>
+		<BigSpinner/>
+	</div>
+}
+
+interface ErrorComponentProps {
+	show: boolean
+	message: string | OptionalSignal<string>
+}
+const ErrorComponent = ({ show, message }: ErrorComponentProps) => {
+	if (show === false) return <></>
+	return <p class = 'error-component'> { message } </p>
+}
+
+interface EnsRegistryErrorProps {
+	checkBoxes: OptionalSignal<CheckBoxes>
+}
+const EnsRegistryError = ({ checkBoxes }: EnsRegistryErrorProps) => {
+	if (checkBoxes.deepValue === undefined || checkBoxes.deepValue[0] === undefined || checkBoxes.deepValue[0].exists) return <></>
+	return <p style = 'color: #b43c42'>
+		{ `The name ${ checkBoxes.deepValue[0].domainInfo.label } does not exist in the ENS registry. You need to register the domain to use PetalLock.` }
+	</p>
 }
 
 export function App() {
@@ -62,15 +95,16 @@ export function App() {
 	}
 
 	const updateInfos = async (showLoading: boolean) => {
+		const ensSubDomain = inputValue.value.toLowerCase()
 		try {
-			const ensSubDomain = inputValue.value.toLowerCase()
 			if (!isValidEnsSubDomain(ensSubDomain)) return
+			if (loadingInfos.value) return // already loading
 			if (showLoading) loadingInfos.value = true
 			const newPathInfo = await getDomainInfos(maybeAccountAddress.deepValue, ensSubDomain)
 			pathInfo.deepValue = newPathInfo
 			immutable.value = false
 			checkBoxes.deepValue = newPathInfo.map((currElement, index): FinalChildChecks | ParentChecks => {
-				const fusesBurned = areRequiredFusesBurnt(index, newPathInfo)
+				const fusesBurned = areRequiredFusesBurntWithoutApproval(index, newPathInfo)
 				const base = {
 					exists: currElement.registered,
 					isWrapped: currElement.isWrapped,
@@ -78,11 +112,12 @@ export function App() {
 					domainInfo: currElement,
 				}
 				if (index === newPathInfo.length - 1) {
-					immutable.value = currElement.isWrapped && fusesBurned && isChildOwnershipOwnedByOpenRenewManager(currElement)
+					immutable.value = currElement.isWrapped && fusesBurned && isChildOwnershipGivenAway(currElement)
 					return {
 						...base,
 						type: 'finalChild' as const,
 						ownershipOpenRenewalContract: isChildOwnershipOwnedByOpenRenewManager(currElement),
+						childOwnershipIsGivenAway: isChildOwnershipGivenAway(currElement),
 						immutable: immutable.value,
 						contentHashIsSet: currElement.contentHash !== '0x',
 						resolutionAddressIsSet: BigInt(currElement.resolutionAddress) !== 0n,
@@ -91,7 +126,7 @@ export function App() {
 				return {
 					...base,
 					type: 'parent' as const,
-					openRenewalContractIsApproved: currElement.approved === getOpenRenewalManagerAddress()
+					openRenewalContractIsApproved: currElement.approved === getOpenRenewalManagerAddress() && currElement.fuses.includes('Cannot Approve')
 				}
 			})
 			errorString.value = undefined
@@ -99,6 +134,7 @@ export function App() {
 			setError(e)
 		} finally {
 			loadingInfos.value = false
+			if (inputValue.value.toLowerCase() !== ensSubDomain) await updateInfos(showLoading)
 		}
 	}
 
@@ -166,10 +202,7 @@ export function App() {
 
 	return <main>
 		<div class = 'app'>
-			{ !isWindowEthereum.value ? <p class = 'paragraph'> An Ethereum enabled wallet is required to make immutable domains.</p> : <></> }
-
-			{ !loadingAccount.value && isWindowEthereum.value ? <WalletComponent maybeAccountAddress = { maybeAccountAddress } /> : <></> }
-
+			<WalletComponent loadingAccount = { loadingAccount } isWindowEthereum = { isWindowEthereum } maybeAccountAddress = { maybeAccountAddress } />
 			<div style = 'display: block'>
 				<div class = 'petal-lock'>
 					<img src = 'favicon.svg' alt = 'Icon' style ='width: 60px;'/> PetalLock
@@ -185,16 +218,11 @@ export function App() {
 				onInput = { e => handleInput(e.currentTarget.value) }
 			/>
 
-			{ loadingInfos.value === true || loadingAccount.value ? <div style = 'max-width: fit-content; margin-inline: auto; padding: 20px;'> <BigSpinner/> </div> : <></> }
-
-			{ errorString.deepValue !== undefined ? <p class = 'error-component'> { errorString.value }</p> : <> </> }
-
-			{ chainId.value !== undefined && chainId.value !== 1 ? <p class = 'error-component'> { 'PetalLock functions only on Ethereum Mainnet. Please switch to Ethereum Mainnet.' }</p> : <> </> }
-
-			{ checkBoxes.deepValue === undefined || checkBoxes.deepValue[0] === undefined || checkBoxes.deepValue[0].exists ? <></>: <p style = 'color: #b43c42'>{ `The name ${ checkBoxes.deepValue[0].domainInfo.label } does not exist in the ENS registry. You need to register the domain to use PetalLock.` }</p> }
-
-			{ checkBoxes.value !== undefined ? <Immutable checkBoxesArray = { checkBoxes.value } /> : <></> }
-
+			<LoadingSpinner loading = { loadingInfos.value === true || loadingAccount.value }/>
+			<ErrorComponent message = { errorString } show = { errorString.deepValue !== undefined } />
+			<ErrorComponent show = { chainId.value !== undefined && chainId.value !== 1 } message = { 'PetalLock functions only on Ethereum Mainnet. Please switch to Ethereum Mainnet.' }/>
+			<EnsRegistryError checkBoxes = { checkBoxes } />
+			<Immutable checkBoxesArray = { checkBoxes } />
 			<Requirements checkBoxesArray = { checkBoxes }/>
 
 			<Create

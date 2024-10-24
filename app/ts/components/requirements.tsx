@@ -1,13 +1,13 @@
 import { computed, Signal, useSignal } from '@preact/signals'
-import { AccountAddress, CheckBoxes, FinalChildChecks, ParentChecks } from '../types/types.js'
-import { ENS_NAME_WRAPPER } from '../utils/constants.js'
-import { callPetalLock, deployPetalLockAndRenewalManager, getOpenRenewalManagerAddress, getRequiredFuses, renewDomainByYear, renewDomainToMax } from '../utils/ensUtils.js'
+import { AccountAddress, CheckBoxes, EnsFuseName, FinalChildChecks, ParentChecks } from '../types/types.js'
+import { callPetalLock, deployPetalLockAndRenewalManager, getOpenRenewalManagerAddress, getRequiredFusesWithoutApproval, renewDomainByYear, renewDomainToMax } from '../utils/ensUtils.js'
 import { isSameAddress } from '../utils/utilities.js'
 import { OptionalSignal } from '../utils/OptionalSignal.js'
 import { isValidContentHashString } from '../utils/contenthash.js'
 import { Spinner } from './Spinner.js'
 import { isAddress } from 'viem'
 import { YearPicker } from './YearPicker.js'
+import { ENS_NAME_WRAPPER } from '../utils/constants.js'
 
 interface SwitchAddressProps {
 	maybeAccountAddress: OptionalSignal<AccountAddress>
@@ -23,28 +23,39 @@ export const SwitchAddress = ({ maybeSigningAddress, maybeAccountAddress, requir
 	return <p class = 'paragraph' style = 'color: #b43c42'> { ` - Switch to ${ maybeSigningAddress } to sign` } </p>
 }
 
+const arrayToString = (array: readonly string[]) => array.map((n) => `"${ n }"`).join(', ')
 
-export const ChildRequirements = ( { checkBoxes, fuses } : { checkBoxes: FinalChildChecks, fuses: readonly string[] }) => {
+const getFuseString = (alreadyBurntBuses: readonly EnsFuseName[], requiredFuses: readonly EnsFuseName[]) => {
+	const fusesToBurnStill = requiredFuses.filter((fuse) => !alreadyBurntBuses.includes(fuse))
+	if (alreadyBurntBuses.length === 0) return `The fuses ${ arrayToString(fusesToBurnStill) } need to be burnt`
+	if (fusesToBurnStill.length === 0) return `Currently the fuses ${ arrayToString(alreadyBurntBuses) } are burnt`
+	return `Currently the fuses ${ arrayToString(alreadyBurntBuses) } are burnt. It it still needed to burn following fuses: ${ arrayToString(fusesToBurnStill) }`
+}
+
+export const ChildRequirements = ( { checkBoxes, fuses } : { checkBoxes: FinalChildChecks, fuses: readonly EnsFuseName[] }) => {
+	const fuseError = getFuseString(checkBoxes.domainInfo.fuses, fuses)
 	return <>
 		<p class = 'subdomain-header'>{ checkBoxes.domainInfo.subDomain } </p>
 		<div class = 'grid-container'>
 			<Requirement checked = { checkBoxes.exists } primarytext = { `${ checkBoxes.domainInfo.subDomain } exists` } />
 			<Requirement checked = { checkBoxes.isWrapped } primarytext = { `${ checkBoxes.domainInfo.subDomain } is wrapped` } />
-			<Requirement checked = { checkBoxes.fusesBurned } primarytext = { `${ checkBoxes.domainInfo.subDomain } fuses are burnt` } secondaryText = { `The fuses ${ fuses.map((n) => `"${ n }"`).join(', ') } are burnt` } />
+			<Requirement checked = { checkBoxes.fusesBurned } primarytext = { `${ checkBoxes.domainInfo.subDomain } fuses are burnt` } secondaryText = { fuseError } />
+			<Requirement checked = { checkBoxes.childOwnershipIsGivenAway } primarytext = { 'The domain control is restricted' } secondaryText = 'The owner of the domain need to be burned or controlled by the Open Renewal Contract'/>
 			<Requirement checked = { checkBoxes.ownershipOpenRenewalContract } primarytext = { `${ checkBoxes.domainInfo.subDomain } is owned by Open Renewal Contract` } secondaryText = 'The ownership of subdomain is moved to an Open Renewal Contract that allows anyone to renew the domain.'/>
 			<Requirement checked = { checkBoxes.contentHashIsSet || checkBoxes.resolutionAddressIsSet } primarytext = { 'Content hash or address is set'} secondaryText = 'Content hash or address should be set for the domain to be useful'/>
 		</div>
 	</>
 }
 
-export const ParentRequirements = ( { checkBoxes, fuses } : { checkBoxes: ParentChecks, fuses: readonly string[] }) => {
+export const ParentRequirements = ( { checkBoxes, fuses } : { checkBoxes: ParentChecks, fuses: readonly EnsFuseName[] }) => {
+	const fuseError = getFuseString(checkBoxes.domainInfo.fuses, fuses)
 	return <>
-	<p class = 'subdomain-header'>{ checkBoxes.domainInfo.subDomain } </p>
+		<p class = 'subdomain-header'>{ checkBoxes.domainInfo.subDomain } </p>
 		<div class = 'grid-container'>
 			<Requirement checked = { checkBoxes.exists } primarytext = { `${ checkBoxes.domainInfo.subDomain } exists` } />
 			<Requirement checked = { checkBoxes.isWrapped } primarytext = { `${ checkBoxes.domainInfo.subDomain } is wrapped` } />
-			<Requirement checked = { checkBoxes.fusesBurned } primarytext = { `${ checkBoxes.domainInfo.subDomain } fuses are burnt` } secondaryText = { `The fuses ${ fuses.map((n) => `"${ n }"`).join(', ') } are burnt` } />
-			<Requirement checked = { checkBoxes.openRenewalContractIsApproved } primarytext = { `${ checkBoxes.domainInfo.subDomain } has approved Open Renewal Contract` } secondaryText = { `Contract ${ getOpenRenewalManagerAddress() } needs to be approved in order for anyone to be able to renew the name.` } />
+			<Requirement checked = { checkBoxes.fusesBurned } primarytext = { `${ checkBoxes.domainInfo.subDomain } fuses are burnt` } secondaryText = { fuseError } />
+			<Requirement checked = { checkBoxes.openRenewalContractIsApproved } primarytext = { `${ checkBoxes.domainInfo.subDomain } has approved Open Renewal Contract` } secondaryText = { `Contract ${ getOpenRenewalManagerAddress() } needs to be approved and fuses "Cannot Approve" needs to be burned in order for anyone to be able to renew the name.` } />
 		</div>
 	</>
 }
@@ -53,7 +64,7 @@ export const Requirements = ({ checkBoxesArray } : { checkBoxesArray: OptionalSi
 	const allCheckBoxes = checkBoxesArray.deepValue
 	if (allCheckBoxes === undefined) return <></>
 	return <div class = 'grid-container-bordered'> { [...allCheckBoxes].reverse().map((check, index) => {
-		const fuses = getRequiredFuses(index, allCheckBoxes.map((c) => c.domainInfo))
+		const fuses = getRequiredFusesWithoutApproval(allCheckBoxes.length - index - 1, allCheckBoxes.map((c) => c.domainInfo))
 		if (check.type === 'parent') return <ParentRequirements checkBoxes = { check } fuses = { fuses }/>
 		return <ChildRequirements checkBoxes = { check } fuses = { fuses }/>
 	}) } </div>
@@ -79,8 +90,9 @@ export const Requirement = ({ checked, primarytext, secondaryText }: Requirement
 	</>
 }
 
-export const Immutable = ( { checkBoxesArray } : { checkBoxesArray: Signal<CheckBoxes> }) => {
-	const checkBoxes = checkBoxesArray.value[checkBoxesArray.value.length - 1]
+export const Immutable = ( { checkBoxesArray } : { checkBoxesArray: OptionalSignal<CheckBoxes> }) => {
+	if (checkBoxesArray.deepValue === undefined) return <></>
+	const checkBoxes = checkBoxesArray.deepValue[checkBoxesArray.deepValue.length - 1]
 	if (checkBoxes === undefined || checkBoxes.type !== 'finalChild') return <></>
 	return <div>
 		<div style = 'padding-top: 30px; padding-bottom: 30px; align-items: center; display: grid; width: 100%'>
@@ -92,6 +104,36 @@ export const Immutable = ( { checkBoxesArray } : { checkBoxesArray: Signal<Check
 		</div>
 		{ checkBoxes.immutable ? <></> : <p style = 'margin: 0px; margin-bottom: 10px; padding-left: 10px;' class = 'requirement'> { checkBoxes.domainInfo.subDomain } should satisfy the following conditions to be immutable: </p> }
 	</div>
+}
+
+interface DeployProps {
+	areContractsDeployed: Signal<boolean | undefined>
+	deploy: () => void
+}
+
+export const DeployContract = ({ areContractsDeployed, deploy }: DeployProps) => {
+	if (areContractsDeployed.value === false) return <>
+		<p class = 'error-component' style = 'width: 100%; margin-left: 10px; text-align: center;'> PetalLock contract is not deployed. </p>
+		<button class = 'button is-primary' onClick = { deploy }> Deploy PetalLock contract</button>
+	</>
+	return <></>
+}
+
+interface DisplayErrorStringIfNotUndefinedProps {
+	maybeString: Signal<string | undefined>
+}
+const DisplayErrorStringIfNotUndefined = ({ maybeString }: DisplayErrorStringIfNotUndefinedProps) => {
+	if (maybeString.value === undefined) return <></>
+	return <p class = 'paragraph' style = 'color: #b43c42'> { maybeString.value } </p>
+}
+
+interface DisplayErrorStringIfVariableTrueProps {
+	displayError: boolean
+	message: string
+}
+const DisplayErrorStringIfVariableTrue = ({ message, displayError }: DisplayErrorStringIfVariableTrueProps) => {
+	if (displayError === false) return <></>
+	return <p class = 'paragraph' style = 'color: #b43c42'> { message } </p>
 }
 
 interface CreateProps {
@@ -113,9 +155,6 @@ interface CreateProps {
 export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos, immutable, handleContentHashInput, handleResolutionAddressInput, maybeAccountAddress, checkBoxes, updateInfos, creating, areContractsDeployed, extendYear, extending }: CreateProps) => {
 	const isYearValid = useSignal<boolean>(true)
 
-	if (checkBoxes.deepValue === undefined) return <></>
-	const subDomain = checkBoxes.deepValue[checkBoxes.deepValue.length -1]?.domainInfo.subDomain
-	if (subDomain === undefined) throw new Error('missing subdomain')
 	const makeImmutable = async () => {
 		const account = maybeAccountAddress.peek()
 		if (account === undefined) throw new Error('missing maybeAccountAddress')
@@ -186,7 +225,7 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 		return ` - The domain${ unique.length > 1 ? 's' : '' } need to be owned and managed by the same address. Currently they are managed by addresses: ${ unique.join(', ') }`
 	})
 	const domainExistIssue = computed(() => {
-		const first = checkBoxes.deepValue ? checkBoxes.deepValue[0] : undefined
+		const first = checkBoxes.deepValue?.at(0)
 		if (first === undefined || first.exists) return undefined
 		return ` - The domain ${ first.domainInfo.subDomain } need to be created before you can use PetalLock to create immutable subdomains under it`
 	})
@@ -205,41 +244,13 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 		return first.domainInfo.expiry.toISOString() !== last.domainInfo.expiry.toISOString()
 	})
 
-	return <>
-		<div style = 'padding-top: 10px;'>
-			{ !immutable.value ? <div style = 'padding: 10px;'>
-				<p style = 'white-space: nowrap; margin: 0; font-size: 24px; padding-bottom: 10px'>{ `Make the domain immutable!` }</p>
-				<div style = 'display: grid; grid-template-columns: min-content auto; width: 100%; gap: 10px; padding-bottom: 10px;'>
-					<p style = 'white-space: nowrap; margin: 0;'>{ `Content hash:` }</p>
-					<input
-						style = 'height: fit-content;'
-						class = 'input'
-						type = 'text'
-						width = '100%'
-						placeholder = 'ipfs://bafy...'
-						value = { contentHashInput.value }
-						onInput = { e => handleContentHashInput(e.currentTarget.value) }
-					/>
-				</div>
-				<div style = 'display: grid; grid-template-columns: min-content auto; width: 100%; gap: 10px;'>
-					<p style = 'white-space: nowrap; margin: 0;'>{ `Resolution address:` }</p>
-					<input
-						style = 'height: fit-content;'
-						class = 'input'
-						type = 'text'
-						width = '100%'
-						placeholder = '0x...'
-						value = { resolutionAddressInput.value }
-						onInput = { e => handleResolutionAddressInput(e.currentTarget.value) }
-					/>
-				</div>
-			</div> : <></> }
-
-			{ areContractsDeployed.value === false ? <>
-				<p class = 'error-component' style = 'width: 100%; margin-left: 10px; text-align: center;'> PetalLock contract is not deployed. </p>
-				<button class = 'button is-primary' onClick = { deploy }> Deploy PetalLock contract</button>
-			</> : <></> }
-			{ immutable.value ? <div class = 'extend-dialog'>
+	if (checkBoxes.deepValue === undefined) return <></>
+	const finalChild = checkBoxes.deepValue[checkBoxes.deepValue.length - 1]
+	const subDomain = finalChild?.domainInfo.subDomain
+	if (subDomain === undefined) throw new Error('missing subdomain')
+	return <div style = 'padding-top: 10px;'>
+		{ immutable.value ? <div key = 'dialog' class = 'extend-dialog'>
+			{ !(finalChild?.type === 'finalChild' && finalChild.ownershipOpenRenewalContract) ? <div style = 'justify-content: center;'> <p class = 'paragraph' style = 'color: #b43c42'> { `Warning: ${ subDomain } cannot be renewed. It will become mutable when expired.` } </p> </div>: <>
 				<p style = 'white-space: nowrap; margin: 0; font-size: 24px; padding-bottom: 10px; justify-self: center;'>{ `Renew ${ subDomain }` }</p>
 				<div style = 'justify-content: center;'>
 					<p style = 'font-size: 24px;'> Renew by&nbsp;</p> <YearPicker validYear = { isYearValid } year = { extendYear }/> <p style = 'font-size: 24px;'>&nbsp;years </p>
@@ -254,19 +265,46 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 						<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { extending.value } onClick = { renewToMax }> { `Renew to ${ checkBoxes.deepValue[0].domainInfo.expiry.toISOString().substring(0, 10) }` } { extending.value ? <Spinner/> : <></> }</button>
 					</div>
 				</> }
-			</div> : <>
-				<div style = 'padding: 10px; display: block;'>
-					{ domainExistIssue.value === undefined ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { domainExistIssue.value } </p> }
-					<SwitchAddress requirementsMet = { loadingInfos.value } maybeAccountAddress = { maybeAccountAddress } maybeSigningAddress = { maybeSigningAddress }/>
-					{ validContenthash.value || contentHashInput.value.length == 0 ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ` - Content hash is not valid` } </p> }
-					{ validResolutionAddress.value || resolutionAddressInput.value.length == 0 ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ` - Resolution address is not a valid address` } </p> }
-					{ validContenthash.value || validResolutionAddress.value ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ` - Set content hash or resolution address or both` } </p> }
-
-					{ wrappedIssues.value === undefined ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { wrappedIssues.value } </p> }
-					{ ownershipIssues.value === undefined ? <></> : <p class = 'paragraph' style = 'color: #b43c42'> { ownershipIssues.value } </p> }
-				</div>
-				<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { ownershipIssues.value !== undefined || wrappedIssues.value !== undefined || areContractsDeployed.value !== true || !contentSetProperly.value || !rightAddress.value || checkBoxes.deepValue === undefined || loadingInfos.value || immutable.value || creating.value } onClick = { makeImmutable }> Make immutable { creating.value ? <Spinner/> : <></> }</button>
 			</> }
-		</div>
-	</>
+		</div> : <div key = 'dialog'>
+			<div style = 'padding: 10px;'>
+				<p style = 'white-space: nowrap; margin: 0; font-size: 24px; padding-bottom: 10px'> Make the domain immutable! </p>
+				<div style = 'display: grid; grid-template-columns: min-content auto; width: 100%; gap: 10px; padding-bottom: 10px;'>
+					<p style = 'white-space: nowrap; margin: 0;'>{ `Content hash:` }</p>
+					<input
+						style = 'height: fit-content;'
+						class = 'input'
+						type = 'text'
+						width = '100%'
+						placeholder = 'ipfs://bafy...'
+						value = { contentHashInput.value }
+						onInput = { e => handleContentHashInput(e.currentTarget.value) }
+					/>
+				</div>
+				<div style = 'display: grid; grid-template-columns: min-content auto; width: 100%; gap: 10px;'>
+					<p style = 'white-space: nowrap; margin: 0;'> Resolution address: </p>
+					<input
+						style = 'height: fit-content;'
+						class = 'input'
+						type = 'text'
+						width = '100%'
+						placeholder = '0x...'
+						value = { resolutionAddressInput.value }
+						onInput = { e => handleResolutionAddressInput(e.currentTarget.value) }
+					/>
+				</div>
+			</div>
+			<div style = 'padding: 10px; display: block;' key = 'issues'>
+				<DisplayErrorStringIfNotUndefined maybeString = { domainExistIssue } />
+				<DisplayErrorStringIfVariableTrue displayError = { !(validContenthash.value || contentHashInput.value.length === 0) } message = ' - Content hash is not valid'/>
+				<DisplayErrorStringIfVariableTrue displayError = { !(validResolutionAddress.value || resolutionAddressInput.value.length === 0) } message = ' - Resolution address is not a valid address'/>
+				<DisplayErrorStringIfVariableTrue displayError = { !(validContenthash.value || validResolutionAddress.value) } message = ' - Set content hash or resolution address or both'/>
+				<DisplayErrorStringIfNotUndefined maybeString = { wrappedIssues } />
+				<DisplayErrorStringIfNotUndefined maybeString = { ownershipIssues } />
+				<SwitchAddress requirementsMet = { loadingInfos.value } maybeAccountAddress = { maybeAccountAddress } maybeSigningAddress = { maybeSigningAddress }/>
+			</div>
+			<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { ownershipIssues.value !== undefined || wrappedIssues.value !== undefined || areContractsDeployed.value !== true || !contentSetProperly.value || !rightAddress.value || checkBoxes.deepValue === undefined || loadingInfos.value || immutable.value || creating.value } onClick = { makeImmutable }> Make immutable { creating.value ? <Spinner/> : <></> }</button>
+		</div> }
+		<DeployContract areContractsDeployed = { areContractsDeployed } deploy = { deploy }/>
+	</div>
 }
