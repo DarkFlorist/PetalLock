@@ -6,24 +6,13 @@ interface INameWrapper {
     function extendExpiry(bytes32 node, bytes32 labelhash, uint64 expiry) external returns (uint64);
 }
 
-interface IReverseRegistrar {
-    function claim(address owner) external returns (bytes32);
-}
-
 interface IENS {
     function owner(bytes32 node) external view returns (address);
 }
 
 address constant ENS_TOKEN_WRAPPER = 0xD4416b13d2b3a9aBae7AcD5D6C2BbDBE25686401;
-address constant ENS_REGISTRY_WITH_FALLBACK = 0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e;
-IENS constant ENS = IENS(ENS_REGISTRY_WITH_FALLBACK);
-bytes32 constant ADDR_REVERSE_NODE = 0x91d1777781884d03a6757a803996e38de2a42967fb37eeaca72729271025a9e2; // namehash('addr.reverse')
 
 contract OpenRenewalManager {
-    constructor() {
-        IReverseRegistrar reverseRegistrar = IReverseRegistrar(ENS.owner(ADDR_REVERSE_NODE));
-        reverseRegistrar.claim(msg.sender);
-    }
     function extendExpiry(bytes32 parentNode, bytes32 labelhash, uint64 expiry) external returns (uint64) {
         return INameWrapper(ENS_TOKEN_WRAPPER).extendExpiry(parentNode, labelhash, expiry);
     }
