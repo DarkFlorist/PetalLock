@@ -1,7 +1,7 @@
 import { computed, Signal, useSignal } from '@preact/signals'
-import { AccountAddress, CheckBoxes, FinalChildChecks, ParentChecks } from '../types/types.js'
+import { AccountAddress, CheckBoxes, EnsFuseName, FinalChildChecks, ParentChecks } from '../types/types.js'
 import { ENS_TOKEN_WRAPPER } from '../utils/constants.js'
-import { callPetalLock, deployPetalLockAndRenewalManager, getOpenRenewalManagerAddress, getRequiredFuses, renewDomainByYear, renewDomainToMax } from '../utils/ensUtils.js'
+import { callPetalLock, deployPetalLockAndRenewalManager, getOpenRenewalManagerAddress, getRequiredFusesWithoutApproval, renewDomainByYear, renewDomainToMax } from '../utils/ensUtils.js'
 import { isSameAddress } from '../utils/utilities.js'
 import { OptionalSignal } from '../utils/OptionalSignal.js'
 import { isValidContentHashString } from '../utils/contenthash.js'
@@ -23,28 +23,39 @@ export const SwitchAddress = ({ maybeSigningAddress, maybeAccountAddress, requir
 	return <p class = 'paragraph' style = 'color: #b43c42'> { ` - Switch to ${ maybeSigningAddress } to sign` } </p>
 }
 
+const arrayToString = (array: readonly string[]) => array.map((n) => `"${ n }"`).join(', ')
 
-export const ChildRequirements = ( { checkBoxes, fuses } : { checkBoxes: FinalChildChecks, fuses: readonly string[] }) => {
+const getFuseString = (alreadyBurntBuses: readonly EnsFuseName[], requiredFuses: readonly EnsFuseName[]) => {
+	const fusesToBurnStill = requiredFuses.filter((fuse) => !alreadyBurntBuses.includes(fuse))
+	if (alreadyBurntBuses.length === 0) return `The fuses ${ arrayToString(fusesToBurnStill) } need to be burnt`
+	if (fusesToBurnStill.length === 0) return `Currently the fuses ${ arrayToString(alreadyBurntBuses) } are burnt`
+	return `Currently the fuses ${ arrayToString(alreadyBurntBuses) } are burnt. It it still needed to burn following fuses: ${ arrayToString(fusesToBurnStill) }`
+}
+
+export const ChildRequirements = ( { checkBoxes, fuses } : { checkBoxes: FinalChildChecks, fuses: readonly EnsFuseName[] }) => {
+	const fuseError = getFuseString(checkBoxes.domainInfo.fuses, fuses)
 	return <>
 		<p class = 'subdomain-header'>{ checkBoxes.domainInfo.subDomain } </p>
 		<div class = 'grid-container'>
 			<Requirement checked = { checkBoxes.exists } primarytext = { `${ checkBoxes.domainInfo.subDomain } exists` } />
 			<Requirement checked = { checkBoxes.isWrapped } primarytext = { `${ checkBoxes.domainInfo.subDomain } is wrapped` } />
-			<Requirement checked = { checkBoxes.fusesBurned } primarytext = { `${ checkBoxes.domainInfo.subDomain } fuses are burnt` } secondaryText = { `The fuses ${ fuses.map((n) => `"${ n }"`).join(', ') } are burnt` } />
+			<Requirement checked = { checkBoxes.fusesBurned } primarytext = { `${ checkBoxes.domainInfo.subDomain } fuses are burnt` } secondaryText = { fuseError } />
+			<Requirement checked = { checkBoxes.childOwnershipIsGivenAway } primarytext = { 'The domain control is restricted' } secondaryText = 'The owner of the domain need to be burned or controlled by the Open Renewal Contract'/>
 			<Requirement checked = { checkBoxes.ownershipOpenRenewalContract } primarytext = { `${ checkBoxes.domainInfo.subDomain } is owned by Open Renewal Contract` } secondaryText = 'The ownership of subdomain is moved to an Open Renewal Contract that allows anyone to renew the domain.'/>
 			<Requirement checked = { checkBoxes.contentHashIsSet || checkBoxes.resolutionAddressIsSet } primarytext = { 'Content hash or address is set'} secondaryText = 'Content hash or address should be set for the domain to be useful'/>
 		</div>
 	</>
 }
 
-export const ParentRequirements = ( { checkBoxes, fuses } : { checkBoxes: ParentChecks, fuses: readonly string[] }) => {
+export const ParentRequirements = ( { checkBoxes, fuses } : { checkBoxes: ParentChecks, fuses: readonly EnsFuseName[] }) => {
+	const fuseError = getFuseString(checkBoxes.domainInfo.fuses, fuses)
 	return <>
-	<p class = 'subdomain-header'>{ checkBoxes.domainInfo.subDomain } </p>
+		<p class = 'subdomain-header'>{ checkBoxes.domainInfo.subDomain } </p>
 		<div class = 'grid-container'>
 			<Requirement checked = { checkBoxes.exists } primarytext = { `${ checkBoxes.domainInfo.subDomain } exists` } />
 			<Requirement checked = { checkBoxes.isWrapped } primarytext = { `${ checkBoxes.domainInfo.subDomain } is wrapped` } />
-			<Requirement checked = { checkBoxes.fusesBurned } primarytext = { `${ checkBoxes.domainInfo.subDomain } fuses are burnt` } secondaryText = { `The fuses ${ fuses.map((n) => `"${ n }"`).join(', ') } are burnt` } />
-			<Requirement checked = { checkBoxes.openRenewalContractIsApproved } primarytext = { `${ checkBoxes.domainInfo.subDomain } has approved Open Renewal Contract` } secondaryText = { `Contract ${ getOpenRenewalManagerAddress() } needs to be approved in order for anyone to be able to renew the name.` } />
+			<Requirement checked = { checkBoxes.fusesBurned } primarytext = { `${ checkBoxes.domainInfo.subDomain } fuses are burnt` } secondaryText = { fuseError } />
+			<Requirement checked = { checkBoxes.openRenewalContractIsApproved } primarytext = { `${ checkBoxes.domainInfo.subDomain } has approved Open Renewal Contract` } secondaryText = { `Contract ${ getOpenRenewalManagerAddress() } needs to be approved and fuses "Cannot Approve" needs to be burned in order for anyone to be able to renew the name.` } />
 		</div>
 	</>
 }
@@ -53,7 +64,7 @@ export const Requirements = ({ checkBoxesArray } : { checkBoxesArray: OptionalSi
 	const allCheckBoxes = checkBoxesArray.deepValue
 	if (allCheckBoxes === undefined) return <></>
 	return <div class = 'grid-container-bordered'> { [...allCheckBoxes].reverse().map((check, index) => {
-		const fuses = getRequiredFuses(index, allCheckBoxes.map((c) => c.domainInfo))
+		const fuses = getRequiredFusesWithoutApproval(allCheckBoxes.length - index - 1, allCheckBoxes.map((c) => c.domainInfo))
 		if (check.type === 'parent') return <ParentRequirements checkBoxes = { check } fuses = { fuses }/>
 		return <ChildRequirements checkBoxes = { check } fuses = { fuses }/>
 	}) } </div>
@@ -234,24 +245,26 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 	})
 
 	if (checkBoxes.deepValue === undefined) return <></>
-	const subDomain = checkBoxes.deepValue[checkBoxes.deepValue.length - 1]?.domainInfo.subDomain
+	const finalChild = checkBoxes.deepValue[checkBoxes.deepValue.length - 1]
+	const subDomain = finalChild?.domainInfo.subDomain
 	if (subDomain === undefined) throw new Error('missing subdomain')
-
 	return <div style = 'padding-top: 10px;'>
 		{ immutable.value ? <div key = 'dialog' class = 'extend-dialog'>
-			<p style = 'white-space: nowrap; margin: 0; font-size: 24px; padding-bottom: 10px; justify-self: center;'>{ `Renew ${ subDomain }` }</p>
-			<div style = 'justify-content: center;'>
-				<p style = 'font-size: 24px;'> Renew by&nbsp;</p> <YearPicker validYear = { isYearValid } year = { extendYear }/> <p style = 'font-size: 24px;'>&nbsp;years </p>
-				<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { extending.value || !isYearValid.value } onClick = { renewByYear }> Renew { extending.value ? <Spinner/> : <></> }</button>
-			</div>
-			{ !level2DomainExpiryBiggerThanLowestLevelExpiry.value || checkBoxes.deepValue[0] === undefined ? <></> : <>
-				<div style = 'justify-content: center; font-size: 24px;'>
-					<p> OR </p>
-				</div>
+			{ !(finalChild?.type === 'finalChild' && finalChild.ownershipOpenRenewalContract) ? <div style = 'justify-content: center;'> <p class = 'paragraph' style = 'color: #b43c42'> { `Warning: ${ subDomain } cannot be renewed. It will become mutable when expired.` } </p> </div>: <>
+				<p style = 'white-space: nowrap; margin: 0; font-size: 24px; padding-bottom: 10px; justify-self: center;'>{ `Renew ${ subDomain }` }</p>
 				<div style = 'justify-content: center;'>
-					<p style = 'font-size: 24px;' >{ `Renew without renewing ${ checkBoxes.deepValue[0].domainInfo.subDomain }` }</p>
-					<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { extending.value } onClick = { renewToMax }> { `Renew to ${ checkBoxes.deepValue[0].domainInfo.expiry.toISOString().substring(0, 10) }` } { extending.value ? <Spinner/> : <></> }</button>
+					<p style = 'font-size: 24px;'> Renew by&nbsp;</p> <YearPicker validYear = { isYearValid } year = { extendYear }/> <p style = 'font-size: 24px;'>&nbsp;years </p>
+					<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { extending.value || !isYearValid.value } onClick = { renewByYear }> Renew { extending.value ? <Spinner/> : <></> }</button>
 				</div>
+				{ !level2DomainExpiryBiggerThanLowestLevelExpiry.value || checkBoxes.deepValue[0] === undefined ? <></> : <>
+					<div style = 'justify-content: center; font-size: 24px;'>
+						<p> OR </p>
+					</div>
+					<div style = 'justify-content: center;'>
+						<p style = 'font-size: 24px;' >{ `Renew without renewing ${ checkBoxes.deepValue[0].domainInfo.subDomain }` }</p>
+						<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { extending.value } onClick = { renewToMax }> { `Renew to ${ checkBoxes.deepValue[0].domainInfo.expiry.toISOString().substring(0, 10) }` } { extending.value ? <Spinner/> : <></> }</button>
+					</div>
+				</> }
 			</> }
 		</div> : <div key = 'dialog'>
 			<div style = 'padding: 10px;'>
