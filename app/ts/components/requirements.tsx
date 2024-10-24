@@ -255,7 +255,7 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 			</> }
 		</div> : <div key = 'dialog'>
 			<div style = 'padding: 10px;'>
-				<p style = 'white-space: nowrap; margin: 0; font-size: 24px; padding-bottom: 10px'>{ `Make the domain immutable!` }</p>
+				<p style = 'white-space: nowrap; margin: 0; font-size: 24px; padding-bottom: 10px'> Make the domain immutable! </p>
 				<div style = 'display: grid; grid-template-columns: min-content auto; width: 100%; gap: 10px; padding-bottom: 10px;'>
 					<p style = 'white-space: nowrap; margin: 0;'>{ `Content hash:` }</p>
 					<input
@@ -269,7 +269,7 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 					/>
 				</div>
 				<div style = 'display: grid; grid-template-columns: min-content auto; width: 100%; gap: 10px;'>
-					<p style = 'white-space: nowrap; margin: 0;'>{ `Resolution address:` }</p>
+					<p style = 'white-space: nowrap; margin: 0;'> Resolution address: </p>
 					<input
 						style = 'height: fit-content;'
 						class = 'input'
