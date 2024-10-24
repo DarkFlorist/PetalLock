@@ -94,8 +94,8 @@ contract PetalLock {
 
 	function formFullPathEnsNameString(string[] memory inputArray) private pure returns (string memory) {
 		bytes memory result;
-		for (uint i = inputArray.length; i > 0; i--) {
-			result = abi.encodePacked(result, inputArray[i - 1], '.');
+		for (uint i = inputArray.length - 1; i >= 0; i--) {
+			result = abi.encodePacked(result, inputArray[i], '.');
 		}
 		return string(abi.encodePacked(result, 'eth'));
 	}
