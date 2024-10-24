@@ -176,7 +176,7 @@ contract PetalLock {
 			}
 		}
 
-		// move the final child to renewal manager, so it can be renewed by anyone (otherwise its technically burned)
+		// move the final child to renewal manager, so it can be renewed by anyone (it is otherwise burned)
 		ensTokenWrapper.safeTransferFrom(address(this), OPEN_RENEWAL_MANAGER, uint256(nodePathToChild[finalChildIndex]), 1, bytes(''));
 
 		// return rest of the tokens to the sender
