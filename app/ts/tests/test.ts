@@ -3,7 +3,7 @@ import { extractENSFuses, getOpenRenewalManagerAddress, getPetalLockUseTransacti
 import { petalLockContractArtifact } from '../VendoredPetalLock.js'
 import { BlockCall, EthSimulateV1Result } from './ethSimulate-types.js'
 import { jsonRpcRequest } from './ethSimulate.js'
-import { ENS_ETH_REGISTRAR_CONTROLLER, ENS_PUBLIC_RESOLVER, ENS_TOKEN_WRAPPER, FINAL_CHILD_FUSES, MID_PARENT_FUSES, SINGLE_DOMAIN_FUSES, TOP_PARENT_FUSES } from '../utils/constants.js'
+import { ENS_ETH_REGISTRAR_CONTROLLER, ENS_PUBLIC_RESOLVER, ENS_NAME_WRAPPER, FINAL_CHILD_FUSES, MID_PARENT_FUSES, SINGLE_DOMAIN_FUSES, TOP_PARENT_FUSES } from '../utils/constants.js'
 import { ENS_WRAPPER_ABI } from '../abi/ens_wrapper_abi.js'
 import { ENS_REGISTRAR_CONTROLLER_ABI } from '../abi/ens_registrar_controller_abi.js'
 import { dataStringWith0xStart, splitDomainToSubDomainAndParent } from '../utils/utilities.js'
@@ -35,7 +35,7 @@ const makeImmutableDomain = (routenames: readonly string[], ownedTokens: readonl
 	)
 	return {
 		from: ownAddress,
-		to: BigInt(ENS_TOKEN_WRAPPER),
+		to: BigInt(ENS_NAME_WRAPPER),
 		input: stringToUint8Array(encodeFunctionData(tx))
 	}
 }
@@ -73,7 +73,7 @@ const ethSimulateTransactions = async (rpc: string, transactions: readonly Block
 const runTests = async () => {
 	console.log(`Reneval manager: ${ getOpenRenewalManagerAddress() }`)
 	const testOpenRenewalManagerAddressIsConstant = async () => {
-		const openRenewalManagerAddress = 0x2F2b2AA8E6Ba88A3E01eaCC031c8812E8Ea74718n
+		const openRenewalManagerAddress = 0x094f4b81679aaB4aD7538c2A4aB1343294864F6Fn
 		const calculatedAddress = BigInt(getOpenRenewalManagerAddress())
 		if (calculatedAddress !== openRenewalManagerAddress) throw new Error(`The Address of Open Renewal Manager has changed to ${ addressString(calculatedAddress) }.`)
 	}
@@ -88,7 +88,7 @@ const runTests = async () => {
 			makeImmutableDomain(subdomainRouteNames2, ownedTokens),
 			{
 				from: ownAddress,
-				to: BigInt(ENS_TOKEN_WRAPPER),
+				to: BigInt(ENS_NAME_WRAPPER),
 				input: stringToUint8Array(encodeFunctionData({
 					abi: ENS_WRAPPER_ABI,
 					functionName: 'balanceOf',
@@ -116,7 +116,7 @@ const runTests = async () => {
 			},
 			{
 				from: whale,
-				to: BigInt(ENS_TOKEN_WRAPPER),
+				to: BigInt(ENS_NAME_WRAPPER),
 				input: stringToUint8Array(encodeFunctionData({
 					abi: ENS_WRAPPER_ABI,
 					functionName: 'getData',
@@ -125,7 +125,7 @@ const runTests = async () => {
 			},
 			{
 				from: whale,
-				to: BigInt(ENS_TOKEN_WRAPPER),
+				to: BigInt(ENS_NAME_WRAPPER),
 				input: stringToUint8Array(encodeFunctionData({
 					abi: ENS_WRAPPER_ABI,
 					functionName: 'getData',
@@ -148,7 +148,7 @@ const runTests = async () => {
 		const ownedTokens = [BigInt(namehash(subdomainRouteNames2[0]))]
 		const result = await ethSimulateTransactions(rpc, [{
 			from: ownAddress,
-			to: BigInt(ENS_TOKEN_WRAPPER),
+			to: BigInt(ENS_NAME_WRAPPER),
 			input: stringToUint8Array(encodeFunctionData({
 				abi: ENS_WRAPPER_ABI,
 				functionName: 'safeBatchTransferFrom',
@@ -160,7 +160,7 @@ const runTests = async () => {
 	const testNoNonBatchTransfer = async () => {
 		const result = await ethSimulateTransactions(rpc, [{
 			from: ownAddress,
-			to: BigInt(ENS_TOKEN_WRAPPER),
+			to: BigInt(ENS_NAME_WRAPPER),
 			input: stringToUint8Array(encodeFunctionData({
 				abi: ENS_WRAPPER_ABI,
 				functionName: 'safeTransferFrom',
@@ -175,7 +175,7 @@ const runTests = async () => {
 			makeImmutableDomain(subdomainRouteNames3, ownedTokens),
 			{
 				from: whale,
-				to: BigInt(ENS_TOKEN_WRAPPER),
+				to: BigInt(ENS_NAME_WRAPPER),
 				input: stringToUint8Array(encodeFunctionData({
 					abi: ENS_WRAPPER_ABI,
 					functionName: 'getData',
@@ -184,7 +184,7 @@ const runTests = async () => {
 			},
 			{
 				from: whale,
-				to: BigInt(ENS_TOKEN_WRAPPER),
+				to: BigInt(ENS_NAME_WRAPPER),
 				input: stringToUint8Array(encodeFunctionData({
 					abi: ENS_WRAPPER_ABI,
 					functionName: 'getData',
@@ -193,7 +193,7 @@ const runTests = async () => {
 			},
 			{
 				from: whale,
-				to: BigInt(ENS_TOKEN_WRAPPER),
+				to: BigInt(ENS_NAME_WRAPPER),
 				input: stringToUint8Array(encodeFunctionData({
 					abi: ENS_WRAPPER_ABI,
 					functionName: 'getData',
@@ -202,7 +202,7 @@ const runTests = async () => {
 			},
 			{
 				from: ownAddress,
-				to: BigInt(ENS_TOKEN_WRAPPER),
+				to: BigInt(ENS_NAME_WRAPPER),
 				input: stringToUint8Array(encodeFunctionData({
 					abi: ENS_WRAPPER_ABI,
 					functionName: 'balanceOf',
@@ -211,7 +211,7 @@ const runTests = async () => {
 			},
 			{
 				from: ownAddress,
-				to: BigInt(ENS_TOKEN_WRAPPER),
+				to: BigInt(ENS_NAME_WRAPPER),
 				input: stringToUint8Array(encodeFunctionData({
 					abi: ENS_WRAPPER_ABI,
 					functionName: 'balanceOf',
@@ -220,7 +220,7 @@ const runTests = async () => {
 			},
 			{
 				from: ownAddress,
-				to: BigInt(ENS_TOKEN_WRAPPER),
+				to: BigInt(ENS_NAME_WRAPPER),
 				input: stringToUint8Array(encodeFunctionData({
 					abi: ENS_WRAPPER_ABI,
 					functionName: 'balanceOf',
@@ -229,7 +229,7 @@ const runTests = async () => {
 			},
 			{
 				from: ownAddress,
-				to: BigInt(ENS_TOKEN_WRAPPER),
+				to: BigInt(ENS_NAME_WRAPPER),
 				input: stringToUint8Array(encodeFunctionData({
 					abi: ENS_WRAPPER_ABI,
 					functionName: 'balanceOf',
@@ -339,7 +339,7 @@ const runTests = async () => {
 			makeImmutableDomain(subdomainRouteNames3_another, ownedTokens3_another),
 			{
 				from: whale,
-				to: BigInt(ENS_TOKEN_WRAPPER),
+				to: BigInt(ENS_NAME_WRAPPER),
 				input: stringToUint8Array(encodeFunctionData({
 					abi: ENS_WRAPPER_ABI,
 					functionName: 'getData',
@@ -348,7 +348,7 @@ const runTests = async () => {
 			},
 			{
 				from: ownAddress,
-				to: BigInt(ENS_TOKEN_WRAPPER),
+				to: BigInt(ENS_NAME_WRAPPER),
 				input: stringToUint8Array(encodeFunctionData({
 					abi: ENS_WRAPPER_ABI,
 					functionName: 'balanceOf',
@@ -396,7 +396,7 @@ const runTests = async () => {
 			makeImmutableDomain(subdomainRouteNames3, ownedTokens),
 			{
 				from: whale,
-				to: BigInt(ENS_TOKEN_WRAPPER),
+				to: BigInt(ENS_NAME_WRAPPER),
 				input: stringToUint8Array(encodeFunctionData({
 					abi: ENS_WRAPPER_ABI,
 					functionName: 'getApproved',
@@ -405,7 +405,7 @@ const runTests = async () => {
 			},
 			{
 				from: whale,
-				to: BigInt(ENS_TOKEN_WRAPPER),
+				to: BigInt(ENS_NAME_WRAPPER),
 				input: stringToUint8Array(encodeFunctionData({
 					abi: ENS_WRAPPER_ABI,
 					functionName: 'getApproved',
@@ -414,7 +414,7 @@ const runTests = async () => {
 			},
 			{
 				from: whale,
-				to: BigInt(ENS_TOKEN_WRAPPER),
+				to: BigInt(ENS_NAME_WRAPPER),
 				input: stringToUint8Array(encodeFunctionData({
 					abi: ENS_WRAPPER_ABI,
 					functionName: 'getApproved',
@@ -499,7 +499,7 @@ const runTests = async () => {
 			},
 			{
 				from: whale,
-				to: BigInt(ENS_TOKEN_WRAPPER),
+				to: BigInt(ENS_NAME_WRAPPER),
 				input: stringToUint8Array(encodeFunctionData({
 					abi: ENS_WRAPPER_ABI,
 					functionName: 'getData',
@@ -508,7 +508,7 @@ const runTests = async () => {
 			},
 			{
 				from: ownAddress,
-				to: BigInt(ENS_TOKEN_WRAPPER),
+				to: BigInt(ENS_NAME_WRAPPER),
 				input: stringToUint8Array(encodeFunctionData({
 					abi: ENS_WRAPPER_ABI,
 					functionName: 'balanceOf',
@@ -538,7 +538,7 @@ const runTests = async () => {
 			makeImmutableDomain([subdomainRouteNames3[0]], ownedTokens),
 			{
 				from: whale,
-				to: BigInt(ENS_TOKEN_WRAPPER),
+				to: BigInt(ENS_NAME_WRAPPER),
 				input: stringToUint8Array(encodeFunctionData({
 					abi: ENS_WRAPPER_ABI,
 					functionName: 'getData',
@@ -557,7 +557,7 @@ const runTests = async () => {
 			},
 			{
 				from: whale,
-				to: BigInt(ENS_TOKEN_WRAPPER),
+				to: BigInt(ENS_NAME_WRAPPER),
 				input: stringToUint8Array(encodeFunctionData({
 					abi: ENS_WRAPPER_ABI,
 					functionName: 'getData',
@@ -607,7 +607,7 @@ const runTests = async () => {
 		)
 		const result = await ethSimulateTransactions(rpc, [{
 			from: ownAddress,
-			to: BigInt(ENS_TOKEN_WRAPPER),
+			to: BigInt(ENS_NAME_WRAPPER),
 			input: stringToUint8Array(encodeFunctionData(tx))
 		}])
 		if (allSuccess(result)) throw new Error('transaction succeeded while it should fail')

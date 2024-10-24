@@ -3,12 +3,12 @@ pragma solidity 0.8.26;
 
 // ENS contracts
 address constant ENS_PUBLIC_RESOLVER = 0x231b0Ee14048e9dCcD1d247744d114a4EB5E8E63;
-address constant ENS_TOKEN_WRAPPER = 0xD4416b13d2b3a9aBae7AcD5D6C2BbDBE25686401;
+address constant ENS_NAME_WRAPPER = 0xD4416b13d2b3a9aBae7AcD5D6C2BbDBE25686401;
 address constant ENS_REGISTRY_WITH_FALLBACK = 0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e;
 address constant ENS_ETH_REGISTRAR_CONTROLLER = 0x253553366Da8546fC250F225fe3d25d0C782303b;
 
 // Open Renewal Manager contract address
-address constant OPEN_RENEWAL_MANAGER = 0x2F2b2AA8E6Ba88A3E01eaCC031c8812E8Ea74718;
+address constant OPEN_RENEWAL_MANAGER = 0x094f4b81679aaB4aD7538c2A4aB1343294864F6F;
 
 // ENS Fuses
 uint16 constant CANNOT_UNWRAP = 1;
@@ -32,7 +32,7 @@ interface IENsRegistrarController {
 	function renew(string calldata name, uint256 duration) external payable;
 }
 
-interface IEnsTokenWrapper {
+interface IEnsNameWrapper {
 	function safeTransferFrom(address from, address to, uint256 tokenId, uint256 amount, bytes memory _data) external;
 	function safeBatchTransferFrom(address from, address to, uint256[] memory tokenId, uint256[] memory amount, bytes memory _data) external;
 	function setSubnodeRecord(bytes32 parentNode, string memory label, address owner, address resolver, uint64 ttl, uint32 fuses, uint64 expiry) external returns(bytes32 node);
@@ -56,7 +56,7 @@ interface IOpenRenewalManager {
 
 IOpenRenewalManager constant openRenewalManager = IOpenRenewalManager(OPEN_RENEWAL_MANAGER);
 IEnsRegistryWithFallBack constant ensRegistry = IEnsRegistryWithFallBack(ENS_REGISTRY_WITH_FALLBACK);
-IEnsTokenWrapper constant ensTokenWrapper = IEnsTokenWrapper(ENS_TOKEN_WRAPPER);
+IEnsNameWrapper constant ensNameWrapper = IEnsNameWrapper(ENS_NAME_WRAPPER);
 IEnsPublicResolver constant ensPublicResolver = IEnsPublicResolver(ENS_PUBLIC_RESOLVER);
 IENsRegistrarController constant ensRegistrarController = IENsRegistrarController(ENS_ETH_REGISTRAR_CONTROLLER);
 
@@ -119,14 +119,14 @@ contract PetalLock {
 
 		uint256 idsLength = tokenIds.length;
 		for (uint256 idIndex = 0; idIndex < idsLength; idIndex++) {
-			require(exists(tokenIds[idIndex], nodePathToChild), 'PetalLock: Sent token does not exist in nodes');
+			require(exists(tokenIds[idIndex], nodePathToChild), 'PetalLock: Sent ENS name does not exist in nodes');
 		}
 		require(ensRegistry.recordExists(nodePathToChild[0]), 'PetalLock: The second level domain does not exist');
-		require(ensTokenWrapper.isWrapped(nodePathToChild[0]), 'PetalLock: The second level domain is not wrapped');
+		require(ensNameWrapper.isWrapped(nodePathToChild[0]), 'PetalLock: The second level domain is not wrapped');
 
 		uint256 finalChildIndex = pathLength - 1;
-		if (finalChildIndex != 0 && ensTokenWrapper.getApproved(uint256(nodePathToChild[0])) != OPEN_RENEWAL_MANAGER) {
-			ensTokenWrapper.approve(OPEN_RENEWAL_MANAGER, uint256(nodePathToChild[0]));
+		if (finalChildIndex != 0 && ensNameWrapper.getApproved(uint256(nodePathToChild[0])) != OPEN_RENEWAL_MANAGER) {
+			ensNameWrapper.approve(OPEN_RENEWAL_MANAGER, uint256(nodePathToChild[0]));
 		}
 
 		// CREATE SUBDOMAINS //
@@ -135,13 +135,13 @@ contract PetalLock {
 			bytes32 node = nodePathToChild[i];
 			// check that the record exists, if not, lets create it
 			if (!ensRegistry.recordExists(node)) {
-				ensTokenWrapper.setSubnodeRecord(nodePathToChild[i - 1], labelPathToChild[i], address(this), ENS_PUBLIC_RESOLVER, 0, 0, MAX_UINT64);
-				ensTokenWrapper.approve(OPEN_RENEWAL_MANAGER, uint256(node));
+				ensNameWrapper.setSubnodeRecord(nodePathToChild[i - 1], labelPathToChild[i], address(this), ENS_PUBLIC_RESOLVER, 0, 0, MAX_UINT64);
+				ensNameWrapper.approve(OPEN_RENEWAL_MANAGER, uint256(node));
 			} else {
 				// the node needs to be wrapped
-				require(ensTokenWrapper.isWrapped(node), 'PetalLock: Child node is not wrapped');
-				if (ensTokenWrapper.getApproved(uint256(node)) != OPEN_RENEWAL_MANAGER) {
-					ensTokenWrapper.approve(OPEN_RENEWAL_MANAGER, uint256(node));
+				require(ensNameWrapper.isWrapped(node), 'PetalLock: Child node is not wrapped');
+				if (ensNameWrapper.getApproved(uint256(node)) != OPEN_RENEWAL_MANAGER) {
+					ensNameWrapper.approve(OPEN_RENEWAL_MANAGER, uint256(node));
 				}
 			}
 		}
@@ -151,33 +151,33 @@ contract PetalLock {
 		if (resolutionAddress != address(0x0)) { ensPublicResolver.setAddr(nodePathToChild[finalChildIndex], resolutionAddress); }
 
 		if (finalChildIndex == 0) { // the second level domain is made immutable
-			(, uint32 finalChildFuses,) = ensTokenWrapper.getData(uint256(nodePathToChild[finalChildIndex]));
+			(, uint32 finalChildFuses,) = ensNameWrapper.getData(uint256(nodePathToChild[finalChildIndex]));
 			if (finalChildFuses & ONLY_CHILD_FUSES != ONLY_CHILD_FUSES) {
-				ensTokenWrapper.setFuses(nodePathToChild[0], ONLY_CHILD_FUSES);
+				ensNameWrapper.setFuses(nodePathToChild[0], ONLY_CHILD_FUSES);
 			}
 		} else {
-			(, uint32 topParentFuses,) = ensTokenWrapper.getData(uint256(nodePathToChild[0]));
+			(, uint32 topParentFuses,) = ensNameWrapper.getData(uint256(nodePathToChild[0]));
 			if (topParentFuses & TOP_PARENT_FUSES_TO_BURN != TOP_PARENT_FUSES_TO_BURN) {
-				ensTokenWrapper.setFuses(nodePathToChild[0], TOP_PARENT_FUSES_TO_BURN);
+				ensNameWrapper.setFuses(nodePathToChild[0], TOP_PARENT_FUSES_TO_BURN);
 			}
 			// rest of the parents
 			uint256 nParents = pathLength - 1;
 			for (uint256 i = 1; i < nParents; i++) {
-				(, uint32 parentFuses,) = ensTokenWrapper.getData(uint256(nodePathToChild[i]));
+				(, uint32 parentFuses,) = ensNameWrapper.getData(uint256(nodePathToChild[i]));
 				if (parentFuses & PARENT_FUSES_TO_BURN != PARENT_FUSES_TO_BURN) {
-					ensTokenWrapper.setChildFuses(nodePathToChild[i - 1], keccak256(abi.encodePacked(labelPathToChild[i])), PARENT_FUSES_TO_BURN, MAX_UINT64);
+					ensNameWrapper.setChildFuses(nodePathToChild[i - 1], keccak256(abi.encodePacked(labelPathToChild[i])), PARENT_FUSES_TO_BURN, MAX_UINT64);
 				}
 			}
 
 			// burn the final child fuses
-			(, uint32 finalChildFuses,) = ensTokenWrapper.getData(uint256(nodePathToChild[finalChildIndex]));
+			(, uint32 finalChildFuses,) = ensNameWrapper.getData(uint256(nodePathToChild[finalChildIndex]));
 			if (finalChildFuses & FINAL_CHILD_FUSES_TO_BURN != FINAL_CHILD_FUSES_TO_BURN) {
-				ensTokenWrapper.setChildFuses(nodePathToChild[finalChildIndex - 1], keccak256(abi.encodePacked(labelPathToChild[finalChildIndex])), FINAL_CHILD_FUSES_TO_BURN, MAX_UINT64);
+				ensNameWrapper.setChildFuses(nodePathToChild[finalChildIndex - 1], keccak256(abi.encodePacked(labelPathToChild[finalChildIndex])), FINAL_CHILD_FUSES_TO_BURN, MAX_UINT64);
 			}
 		}
 
 		// move the final child to renewal manager, so it can be renewed by anyone (otherwise its technically burned)
-		ensTokenWrapper.safeTransferFrom(address(this), OPEN_RENEWAL_MANAGER, uint256(nodePathToChild[finalChildIndex]), 1, bytes(''));
+		ensNameWrapper.safeTransferFrom(address(this), OPEN_RENEWAL_MANAGER, uint256(nodePathToChild[finalChildIndex]), 1, bytes(''));
 
 		// return rest of the tokens to the sender
 		uint256 returnableTokensLength = pathLength - 1;
@@ -188,18 +188,18 @@ contract PetalLock {
 			returnableAmounts[i] = 1;
 		}
 
-		ensTokenWrapper.safeBatchTransferFrom(address(this), originalOwner, returnableTokens, returnableAmounts, bytes(''));
+		ensNameWrapper.safeBatchTransferFrom(address(this), originalOwner, returnableTokens, returnableAmounts, bytes(''));
 	}
 
-	// allow only minting wraped ENS tokens here (required as we are minting them here)
+	// allow only minting wraped ENS names here (required as we are minting them here)
 	function onERC1155Received(address operator, address from, uint256, uint256, bytes memory) external view returns (bytes4) {
-		require(from == address(0x0) && operator == address(this) && msg.sender == ENS_TOKEN_WRAPPER, 'PetalLock: Do not send tokens to PetalLock');
+		require(from == address(0x0) && operator == address(this) && msg.sender == ENS_NAME_WRAPPER, 'PetalLock: Do not send tokens to PetalLock');
 		return this.onERC1155Received.selector;
 	}
 
-	// when receiving wrapped ens tokens, make the last child immutable
+	// when receiving wrapped ens names, make the last child immutable
 	function onERC1155BatchReceived(address, address from, uint256[] memory ids, uint256[] memory, bytes memory data) external returns (bytes4) {
-		require(msg.sender == ENS_TOKEN_WRAPPER, 'PetalLock: Only Wrapped ENS tokens are supported');
+		require(msg.sender == ENS_NAME_WRAPPER, 'PetalLock: Only Wrapped ENS names are supported');
 		(string[] memory labelPathToChild, bytes memory contenthash, address resolutionAddress) = abi.decode(data, (string[], bytes, address));
 		makeImmutable(from, labelPathToChild, ids, contenthash, resolutionAddress);
 		return this.onERC1155BatchReceived.selector;
