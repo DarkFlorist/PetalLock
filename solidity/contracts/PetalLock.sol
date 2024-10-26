@@ -34,7 +34,6 @@ interface IENsRegistrarController {
 
 interface IEnsNameWrapper {
 	function safeTransferFrom(address from, address to, uint256 tokenId, uint256 amount, bytes memory _data) external;
-	function safeBatchTransferFrom(address from, address to, uint256[] memory tokenId, uint256[] memory amount, bytes memory _data) external;
 	function setSubnodeRecord(bytes32 parentNode, string memory label, address owner, address resolver, uint64 ttl, uint32 fuses, uint64 expiry) external returns(bytes32 node);
 	function getData(uint256 id) external view returns (address, uint32, uint64);
 	function setChildFuses(bytes32 parentNode, bytes32 labelhash, uint32 fuses, uint64 expiry) external;
@@ -131,16 +130,12 @@ contract PetalLock {
 
 		// CREATE SUBDOMAINS //
 		// create nodes and approve open renewal manager. Do not create the first domain, it needs to be created already
-		uint256 createdSubdomains = 0;
-		uint256[] memory createdSubDomainNodesAndZeros = new uint256[](pathLength);
 		for (uint256 i = 1; i < pathLength; i++) {
 			bytes32 node = nodePathToChild[i];
 			// check that the record exists, if not, lets create it
 			if (!ensRegistry.recordExists(node)) {
 				ensNameWrapper.setSubnodeRecord(nodePathToChild[i - 1], labelPathToChild[i], address(this), ENS_PUBLIC_RESOLVER, 0, 0, MAX_UINT64);
 				ensNameWrapper.approve(OPEN_RENEWAL_MANAGER, uint256(node));
-				createdSubDomainNodesAndZeros[createdSubdomains] = uint256(node);
-				createdSubdomains++;
 			} else {
 				// the node needs to be wrapped
 				require(ensNameWrapper.isWrapped(node), 'PetalLock: Child node is not wrapped');
@@ -183,27 +178,13 @@ contract PetalLock {
 		// move the final child to renewal manager, so it can be renewed by anyone (otherwise its technically burned)
 		ensNameWrapper.safeTransferFrom(address(this), OPEN_RENEWAL_MANAGER, uint256(finalChildNode), 1, bytes(''));
 
-		// return rest of the tokens to the sender
-		uint256 returnableTokensLength = createdSubdomains + idsLength - 1; // return all except the final child
-		uint256[] memory returnableTokens = new uint256[](returnableTokensLength);
-		uint256[] memory returnableAmounts = new uint256[](returnableTokensLength);
-		uint256 returnableTokenIndex = 0;
-
+		// return all tokens that we own in the path
 		for (uint256 i = 0; i < pathLength; i++) {
-			if (createdSubDomainNodesAndZeros[i] == 0) continue;
-			if (createdSubDomainNodesAndZeros[i] == uint256(finalChildNode)) continue;
-			returnableTokens[returnableTokenIndex] = createdSubDomainNodesAndZeros[i];
-			returnableAmounts[returnableTokenIndex] = 1;
-			returnableTokenIndex++;
+			(address owner,,) = ensNameWrapper.getData(uint256(nodePathToChild[i]));
+			if (owner == address(this)) {
+				ensNameWrapper.safeTransferFrom(address(this), originalOwner, uint256(nodePathToChild[i]), 1, bytes(''));
+			}
 		}
-		for (uint256 idIndex = 0; idIndex < idsLength; idIndex++) {
-			if (tokenIds[idIndex] == uint256(finalChildNode)) continue;
-			returnableTokens[returnableTokenIndex] = tokenIds[idIndex];
-			returnableAmounts[returnableTokenIndex] = 1;
-			returnableTokenIndex++;
-		}
-
-		ensNameWrapper.safeBatchTransferFrom(address(this), originalOwner, returnableTokens, returnableAmounts, bytes(''));
 	}
 
 	// allow only minting wraped ENS names here (required as we are minting them here)
