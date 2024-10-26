@@ -1,4 +1,4 @@
-import { computed, Signal, useSignal } from '@preact/signals'
+import { computed, ReadonlySignal, Signal, useSignal } from '@preact/signals'
 import { AccountAddress, CheckBoxes, EnsFuseName, FinalChildChecks, ParentChecks } from '../types/types.js'
 import { callPetalLock, deployPetalLockAndRenewalManager, getOpenRenewalManagerAddress, getRequiredFusesWithoutApproval, renewDomainByYear, renewDomainToMax } from '../utils/ensUtils.js'
 import { isSameAddress } from '../utils/utilities.js'
@@ -134,6 +134,18 @@ interface DisplayErrorStringIfVariableTrueProps {
 const DisplayErrorStringIfVariableTrue = ({ message, displayError }: DisplayErrorStringIfVariableTrueProps) => {
 	if (displayError === false) return <></>
 	return <p class = 'paragraph' style = 'color: #b43c42'> { message } </p>
+}
+
+interface ContentHashErrorProps {
+	contentHashInput: Signal<string>
+	validContenthash: ReadonlySignal<boolean>
+}
+const ContentHashError = ({ contentHashInput, validContenthash }: ContentHashErrorProps) => {
+	if (validContenthash.value === true) return <></>
+	if (contentHashInput.value.length === 0) return <></>
+	const separator = contentHashInput.value.includes('://')
+	if (separator === false) return <DisplayErrorStringIfVariableTrue displayError = { true } message = ' - Content hash needs to include protocol and hash, eg ("ipfs://bafy...")'/>
+	return <DisplayErrorStringIfVariableTrue displayError = { true } message = ' - Content hash is not valid'/>
 }
 
 interface CreateProps {
@@ -296,7 +308,7 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 			</div>
 			<div style = 'padding: 10px; display: block;' key = 'issues'>
 				<DisplayErrorStringIfNotUndefined maybeString = { domainExistIssue } />
-				<DisplayErrorStringIfVariableTrue displayError = { !(validContenthash.value || contentHashInput.value.length === 0) } message = ' - Content hash is not valid'/>
+				<ContentHashError validContenthash = { validContenthash } contentHashInput = { contentHashInput }/>
 				<DisplayErrorStringIfVariableTrue displayError = { !(validResolutionAddress.value || resolutionAddressInput.value.length === 0) } message = ' - Resolution address is not a valid address'/>
 				<DisplayErrorStringIfVariableTrue displayError = { !(validContenthash.value || validResolutionAddress.value) } message = ' - Set content hash or resolution address or both'/>
 				<DisplayErrorStringIfNotUndefined maybeString = { wrappedIssues } />
