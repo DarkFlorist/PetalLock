@@ -5,7 +5,7 @@ import 'viem/window'
 import { ENS_REGISTRY_ABI } from '../abi/ens_registry_abi.js'
 import { bigIntToNumber, splitDomainToSubDomainAndParent, splitEnsStringToSubdomainPath } from './utilities.js'
 import { ENS_PUBLIC_RESOLVER_ABI } from '../abi/ens_public_resolver_abi.js'
-import { CAN_DO_EVERYTHING, ENS_ETH_REGISTRAR_CONTROLLER, ENS_ETHEREUM_NAME_SERVICE, ENS_FLAGS, ENS_PUBLIC_RESOLVER, ENS_REGISTRY_WITH_FALLBACK, ENS_TOKEN_WRAPPER, FINAL_CHILD_FUSES, MID_PARENT_FUSES, SINGLE_DOMAIN_FUSES, TOP_PARENT_FUSES } from './constants.js'
+import { CAN_DO_EVERYTHING, ENS_ETH_REGISTRAR_CONTROLLER, ENS_ETHEREUM_NAME_SERVICE, ENS_FLAGS, ENS_PUBLIC_RESOLVER, ENS_REGISTRY_WITH_FALLBACK, ENS_NAME_WRAPPER, FINAL_CHILD_FUSES, MID_PARENT_FUSES, SINGLE_DOMAIN_FUSES, TOP_PARENT_FUSES } from './constants.js'
 import { AccountAddress, DomainInfo, EnsFuseName } from '../types/types.js'
 import { ENS_ETHEREUM_NAME_SERVICE_ABI } from '../abi/ens_ethereum_name_service_abi.js'
 import { tryEncodeContentHash } from './contenthash.js'
@@ -67,21 +67,21 @@ export const getChainId = async (accountAddress: AccountAddress) => {
 const getDomainInfo = async (accountAddress: AccountAddress | undefined, nameHash: `0x${ string }`, label: string, parentDomain: string, token: `0x${ string }`, subDomain: string): Promise<DomainInfo> => {
 	const client = createReadClient(accountAddress)
 	const isWrappedPromise = client.readContract({
-		address: ENS_TOKEN_WRAPPER,
+		address: ENS_NAME_WRAPPER,
 		abi: ENS_WRAPPER_ABI,
 		functionName: 'isWrapped',
 		args: [nameHash]
 	})
 
 	const ownerPromise = client.readContract({
-		address: ENS_TOKEN_WRAPPER,
+		address: ENS_NAME_WRAPPER,
 		abi: ENS_WRAPPER_ABI,
 		functionName: 'ownerOf',
 		args: [BigInt(nameHash)]
 	})
 
 	const dataPromise = client.readContract({
-		address: ENS_TOKEN_WRAPPER,
+		address: ENS_NAME_WRAPPER,
 		abi: ENS_WRAPPER_ABI,
 		functionName: 'getData',
 		args: [BigInt(nameHash)]
@@ -132,7 +132,7 @@ const getDomainInfo = async (accountAddress: AccountAddress | undefined, nameHas
 	})
 
 	const approvedPromise = client.readContract({
-		address: ENS_TOKEN_WRAPPER,
+		address: ENS_NAME_WRAPPER,
 		abi: ENS_WRAPPER_ABI,
 		functionName: 'getApproved',
 		args: [BigInt(nameHash)]
@@ -302,7 +302,7 @@ export const getPetalLockUseTransaction = (petalLockAddress: AccountAddress, acc
 	return {
 		chain: mainnet,
 		account: accountAddress,
-		address: ENS_TOKEN_WRAPPER,
+		address: ENS_NAME_WRAPPER,
 		abi: ENS_WRAPPER_ABI,
 		functionName: 'safeBatchTransferFrom',
 		args: [accountAddress, petalLockAddress, ownedTokens, ownedTokens.map(() => 1n), data]

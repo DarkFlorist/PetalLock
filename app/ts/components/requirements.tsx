@@ -1,6 +1,5 @@
 import { computed, Signal, useSignal } from '@preact/signals'
 import { AccountAddress, CheckBoxes, EnsFuseName, FinalChildChecks, ParentChecks } from '../types/types.js'
-import { ENS_TOKEN_WRAPPER } from '../utils/constants.js'
 import { callPetalLock, deployPetalLockAndRenewalManager, getOpenRenewalManagerAddress, getRequiredFusesWithoutApproval, renewDomainByYear, renewDomainToMax } from '../utils/ensUtils.js'
 import { isSameAddress } from '../utils/utilities.js'
 import { OptionalSignal } from '../utils/OptionalSignal.js'
@@ -8,6 +7,7 @@ import { isValidContentHashString } from '../utils/contenthash.js'
 import { Spinner } from './Spinner.js'
 import { isAddress } from 'viem'
 import { YearPicker } from './YearPicker.js'
+import { ENS_NAME_WRAPPER } from '../utils/constants.js'
 
 interface SwitchAddressProps {
 	maybeAccountAddress: OptionalSignal<AccountAddress>
@@ -220,7 +220,7 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 	const ownershipIssues = computed(() => {
 		const managerAndOwners = checkBoxes.deepValue?.filter((x) => x.exists && x.isWrapped).map((x) => [x.domainInfo.owner, x.domainInfo.manager])
 		if (managerAndOwners === undefined || managerAndOwners.length === 0) return undefined
-		const unique = Array.from(new Set(managerAndOwners.flat().flat().filter((address) => address !== ENS_TOKEN_WRAPPER)))
+		const unique = Array.from(new Set(managerAndOwners.flat().flat().filter((address) => address !== ENS_NAME_WRAPPER)))
 		if (unique.length <= 1) return undefined
 		return ` - The domain${ unique.length > 1 ? 's' : '' } need to be owned and managed by the same address. Currently they are managed by addresses: ${ unique.join(', ') }`
 	})
