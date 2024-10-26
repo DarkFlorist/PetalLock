@@ -117,12 +117,13 @@ export const Immutable = ( { checkBoxesArray } : { checkBoxesArray: OptionalSign
 		return parts.length > 0 ? parts.join(' ') : 'less than a day'
 	}
 	const dateDiff = computed(() => humanReadableDateDelta((checkBoxes.domainInfo.expiry.getTime() - new Date().getTime()) / 1000))
+	const dateString = computed(() => checkBoxes.domainInfo.expiry.toISOString().substring(0, 10))
 
 	return <div>
 		<div style = 'padding-top: 30px; padding-bottom: 30px; align-items: center; display: grid; width: 100%'>
 			{ checkBoxes.immutable ? <>
 				<p class = 'status-green'>
-					{`IMMUTABLE for ${ dateDiff } (until ${ checkBoxes.domainInfo.expiry.toISOString().substring(0, 10) })` }
+					{`IMMUTABLE for ${ dateDiff } (until ${ dateString })` }
 				</p>
 			</>: <p class = 'status-red'> NOT IMMUTABLE </p> }
 		</div>
