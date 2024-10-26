@@ -148,47 +148,25 @@ const ContentHashError = ({ contentHashInput, validContenthash }: ContentHashErr
 	return <DisplayErrorStringIfVariableTrue displayError = { true } message = ' - Content hash is not valid'/>
 }
 
-interface CreateProps {
-	contentHashInput: Signal<string>
-	handleContentHashInput: (input: string) => void
-	resolutionAddressInput: Signal<string>
-	handleResolutionAddressInput: (input: string) => void
-	loadingInfos: Signal<boolean>
-	immutable: Signal<boolean>
-	maybeAccountAddress: OptionalSignal<AccountAddress>
+
+interface ImmutableDomainProps {
 	checkBoxes: OptionalSignal<CheckBoxes>
-	updateInfos: (showLoading: boolean) => Promise<void>
-	creating: Signal<boolean>
-	areContractsDeployed: Signal<boolean | undefined>
 	extendYear: Signal<number>
 	extending: Signal<boolean>
+	maybeAccountAddress: OptionalSignal<AccountAddress>
+	updateInfos: (showLoading: boolean) => Promise<void>
 }
 
-export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos, immutable, handleContentHashInput, handleResolutionAddressInput, maybeAccountAddress, checkBoxes, updateInfos, creating, areContractsDeployed, extendYear, extending }: CreateProps) => {
+const ImmutableDomain = ({ checkBoxes, extendYear, extending, maybeAccountAddress, updateInfos }: ImmutableDomainProps) => {
 	const isYearValid = useSignal<boolean>(true)
-
-	const makeImmutable = async () => {
-		const account = maybeAccountAddress.peek()
-		if (account === undefined) throw new Error('missing maybeAccountAddress')
-		if (checkBoxes.deepValue === undefined) return
-		try {
-			creating.value = true
-			await callPetalLock(account.value, checkBoxes.deepValue.map((value) => value.domainInfo), contentHashInput.value.trim(), resolutionAddressInput.value.trim())
-			await updateInfos(false)
-		} catch(e) {
-			throw e
-		} finally {
-			creating.value = false
-		}
-	}
-
-	const deploy = async () => {
-		const account = maybeAccountAddress.peek()
-		if (account === undefined) throw new Error('missing maybeAccountAddress')
-		await deployPetalLockAndRenewalManager(account.value)
-		await updateInfos(false)
-		areContractsDeployed.value = true
-	}
+	if (checkBoxes.deepValue === undefined) return <></>
+	const level2DomainExpiryBiggerThanLowestLevelExpiry = computed(() => {
+		if (checkBoxes.deepValue === undefined) return false
+		const first = checkBoxes.deepValue[0]
+		const last = checkBoxes.deepValue[checkBoxes.deepValue.length - 1]
+		if (first === undefined || last == undefined) return false
+		return first.domainInfo.expiry.toISOString() !== last.domainInfo.expiry.toISOString()
+	})
 
 	const renewByYear = async () => {
 		const account = maybeAccountAddress.peek()
@@ -216,6 +194,58 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 		}
 	}
 
+	const finalChild = checkBoxes.deepValue[checkBoxes.deepValue.length - 1]
+	const subDomain = finalChild?.domainInfo.subDomain
+	if (subDomain === undefined) throw new Error('missing subdomain')
+	return <div key = 'dialog' class = 'extend-dialog'>
+		{ !(finalChild?.type === 'finalChild' && finalChild.ownershipOpenRenewalContract) ? <div style = 'justify-content: center;'> <p class = 'paragraph' style = 'color: #b43c42'> { `Warning: ${ subDomain } cannot be renewed. It will become mutable when expired.` } </p> </div>: <>
+			<p style = 'white-space: nowrap; margin: 0; font-size: 24px; padding-bottom: 10px; justify-self: center;'>{ `Renew ${ subDomain }` }</p>
+			<div style = 'justify-content: center;'>
+				<p style = 'font-size: 24px;'> Renew by&nbsp;</p> <YearPicker validYear = { isYearValid } year = { extendYear }/> <p style = 'font-size: 24px;'>&nbsp;years </p>
+				<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { extending.value || !isYearValid.value } onClick = { renewByYear }> Renew { extending.value ? <Spinner/> : <></> }</button>
+			</div>
+			{ !level2DomainExpiryBiggerThanLowestLevelExpiry.value || checkBoxes.deepValue[0] === undefined ? <></> : <>
+				<div style = 'justify-content: center; font-size: 24px;'>
+					<p> OR </p>
+				</div>
+				<div style = 'justify-content: center;'>
+					<p style = 'font-size: 24px;' >{ `Renew without renewing ${ checkBoxes.deepValue[0].domainInfo.subDomain }` }</p>
+					<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { extending.value } onClick = { renewToMax }> { `Renew to ${ checkBoxes.deepValue[0].domainInfo.expiry.toISOString().substring(0, 10) }` } { extending.value ? <Spinner/> : <></> }</button>
+				</div>
+			</> }
+		</> }
+	</div>
+}
+
+interface NonImmutableDomainProps {
+	maybeAccountAddress: OptionalSignal<AccountAddress>
+	resolutionAddressInput: Signal<string>
+	checkBoxes: OptionalSignal<CheckBoxes>
+	updateInfos: (showLoading: boolean) => Promise<void>
+	creating: Signal<boolean>
+	contentHashInput: Signal<string>
+	handleContentHashInput: (input: string) => void
+	handleResolutionAddressInput: (input: string) => void
+	loadingInfos: Signal<boolean>
+	areContractsDeployed: Signal<boolean | undefined>
+}
+
+const NonImmutableDomain = ({ checkBoxes, maybeAccountAddress, updateInfos, creating, contentHashInput, resolutionAddressInput, handleContentHashInput, handleResolutionAddressInput, loadingInfos, areContractsDeployed }: NonImmutableDomainProps) => {
+	const makeImmutable = async () => {
+		const account = maybeAccountAddress.peek()
+		if (account === undefined) throw new Error('missing maybeAccountAddress')
+		if (checkBoxes.deepValue === undefined) return
+		try {
+			creating.value = true
+			await callPetalLock(account.value, checkBoxes.deepValue.map((value) => value.domainInfo), contentHashInput.value.trim(), resolutionAddressInput.value.trim())
+			await updateInfos(false)
+		} catch(e) {
+			throw e
+		} finally {
+			creating.value = false
+		}
+	}
+
 	const maybeSigningAddress = computed(() => {
 		if (checkBoxes.deepValue === undefined) return undefined
 		return checkBoxes.deepValue[0]?.domainInfo.owner
@@ -224,6 +254,7 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 	const rightAddress = computed(() => isSameAddress(maybeSigningAddress.value, maybeAccountAddress.deepValue))
 	const validContenthash = computed(() => isValidContentHashString(contentHashInput.value.trim()))
 	const validResolutionAddress = computed(() => isAddress(resolutionAddressInput.value.trim()))
+
 	const wrappedIssues = computed(() => {
 		const nonWrappedTokens = checkBoxes.deepValue?.filter((x) => x.exists && !x.isWrapped)
 		if (nonWrappedTokens === undefined || nonWrappedTokens.length === 0) return undefined
@@ -248,75 +279,95 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 		return false
 	})
 
-	const level2DomainExpiryBiggerThanLowestLevelExpiry = computed(() => {
-		if (checkBoxes.deepValue === undefined) return false
-		const first = checkBoxes.deepValue[0]
-		const last = checkBoxes.deepValue[checkBoxes.deepValue.length - 1]
-		if (first === undefined || last == undefined) return false
-		return first.domainInfo.expiry.toISOString() !== last.domainInfo.expiry.toISOString()
-	})
+	return <div key = 'dialog'>
+		<div style = 'padding: 10px;'>
+			<p style = 'white-space: nowrap; margin: 0; font-size: 24px; padding-bottom: 10px'> Make the domain immutable! </p>
+			<div style = 'display: grid; grid-template-columns: min-content auto; width: 100%; gap: 10px; padding-bottom: 10px;'>
+				<p style = 'white-space: nowrap; margin: 0;'>{ `Content hash:` }</p>
+				<input
+					style = 'height: fit-content;'
+					class = 'input'
+					type = 'text'
+					width = '100%'
+					placeholder = 'ipfs://bafy...'
+					value = { contentHashInput.value }
+					onInput = { e => handleContentHashInput(e.currentTarget.value) }
+				/>
+			</div>
+			<div style = 'display: grid; grid-template-columns: min-content auto; width: 100%; gap: 10px;'>
+				<p style = 'white-space: nowrap; margin: 0;'> Resolution address: </p>
+				<input
+					style = 'height: fit-content;'
+					class = 'input'
+					type = 'text'
+					width = '100%'
+					placeholder = '0x...'
+					value = { resolutionAddressInput.value }
+					onInput = { e => handleResolutionAddressInput(e.currentTarget.value) }
+				/>
+			</div>
+		</div>
+		<div style = 'padding: 10px; display: block;' key = 'issues'>
+			<DisplayErrorStringIfNotUndefined maybeString = { domainExistIssue } />
+			<ContentHashError validContenthash = { validContenthash } contentHashInput = { contentHashInput }/>
+			<DisplayErrorStringIfVariableTrue displayError = { !(validResolutionAddress.value || resolutionAddressInput.value.length === 0) } message = ' - Resolution address is not a valid address'/>
+			<DisplayErrorStringIfVariableTrue displayError = { !(validContenthash.value || validResolutionAddress.value) } message = ' - Set content hash or resolution address or both'/>
+			<DisplayErrorStringIfNotUndefined maybeString = { wrappedIssues } />
+			<DisplayErrorStringIfNotUndefined maybeString = { ownershipIssues } />
+			<SwitchAddress requirementsMet = { loadingInfos.value } maybeAccountAddress = { maybeAccountAddress } maybeSigningAddress = { maybeSigningAddress }/>
+		</div>
+		<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { ownershipIssues.value !== undefined || wrappedIssues.value !== undefined || areContractsDeployed.value !== true || !contentSetProperly.value || !rightAddress.value || checkBoxes.deepValue === undefined || loadingInfos.value || creating.value } onClick = { makeImmutable }> Make immutable { creating.value ? <Spinner/> : <></> }</button>
+	</div>
+}
+
+interface CreateProps {
+	contentHashInput: Signal<string>
+	handleContentHashInput: (input: string) => void
+	resolutionAddressInput: Signal<string>
+	handleResolutionAddressInput: (input: string) => void
+	loadingInfos: Signal<boolean>
+	immutable: Signal<boolean>
+	maybeAccountAddress: OptionalSignal<AccountAddress>
+	checkBoxes: OptionalSignal<CheckBoxes>
+	updateInfos: (showLoading: boolean) => Promise<void>
+	creating: Signal<boolean>
+	areContractsDeployed: Signal<boolean | undefined>
+	extendYear: Signal<number>
+	extending: Signal<boolean>
+}
+
+export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos, immutable, handleContentHashInput, handleResolutionAddressInput, maybeAccountAddress, checkBoxes, updateInfos, creating, areContractsDeployed, extendYear, extending }: CreateProps) => {
+	const deploy = async () => {
+		const account = maybeAccountAddress.peek()
+		if (account === undefined) throw new Error('missing maybeAccountAddress')
+		await deployPetalLockAndRenewalManager(account.value)
+		await updateInfos(false)
+		areContractsDeployed.value = true
+	}
 
 	if (checkBoxes.deepValue === undefined) return <></>
 	const finalChild = checkBoxes.deepValue[checkBoxes.deepValue.length - 1]
 	const subDomain = finalChild?.domainInfo.subDomain
 	if (subDomain === undefined) throw new Error('missing subdomain')
 	return <div style = 'padding-top: 10px;'>
-		{ immutable.value ? <div key = 'dialog' class = 'extend-dialog'>
-			{ !(finalChild?.type === 'finalChild' && finalChild.ownershipOpenRenewalContract) ? <div style = 'justify-content: center;'> <p class = 'paragraph' style = 'color: #b43c42'> { `Warning: ${ subDomain } cannot be renewed. It will become mutable when expired.` } </p> </div>: <>
-				<p style = 'white-space: nowrap; margin: 0; font-size: 24px; padding-bottom: 10px; justify-self: center;'>{ `Renew ${ subDomain }` }</p>
-				<div style = 'justify-content: center;'>
-					<p style = 'font-size: 24px;'> Renew by&nbsp;</p> <YearPicker validYear = { isYearValid } year = { extendYear }/> <p style = 'font-size: 24px;'>&nbsp;years </p>
-					<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { extending.value || !isYearValid.value } onClick = { renewByYear }> Renew { extending.value ? <Spinner/> : <></> }</button>
-				</div>
-				{ !level2DomainExpiryBiggerThanLowestLevelExpiry.value || checkBoxes.deepValue[0] === undefined ? <></> : <>
-					<div style = 'justify-content: center; font-size: 24px;'>
-						<p> OR </p>
-					</div>
-					<div style = 'justify-content: center;'>
-						<p style = 'font-size: 24px;' >{ `Renew without renewing ${ checkBoxes.deepValue[0].domainInfo.subDomain }` }</p>
-						<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { extending.value } onClick = { renewToMax }> { `Renew to ${ checkBoxes.deepValue[0].domainInfo.expiry.toISOString().substring(0, 10) }` } { extending.value ? <Spinner/> : <></> }</button>
-					</div>
-				</> }
-			</> }
-		</div> : <div key = 'dialog'>
-			<div style = 'padding: 10px;'>
-				<p style = 'white-space: nowrap; margin: 0; font-size: 24px; padding-bottom: 10px'> Make the domain immutable! </p>
-				<div style = 'display: grid; grid-template-columns: min-content auto; width: 100%; gap: 10px; padding-bottom: 10px;'>
-					<p style = 'white-space: nowrap; margin: 0;'>{ `Content hash:` }</p>
-					<input
-						style = 'height: fit-content;'
-						class = 'input'
-						type = 'text'
-						width = '100%'
-						placeholder = 'ipfs://bafy...'
-						value = { contentHashInput.value }
-						onInput = { e => handleContentHashInput(e.currentTarget.value) }
-					/>
-				</div>
-				<div style = 'display: grid; grid-template-columns: min-content auto; width: 100%; gap: 10px;'>
-					<p style = 'white-space: nowrap; margin: 0;'> Resolution address: </p>
-					<input
-						style = 'height: fit-content;'
-						class = 'input'
-						type = 'text'
-						width = '100%'
-						placeholder = '0x...'
-						value = { resolutionAddressInput.value }
-						onInput = { e => handleResolutionAddressInput(e.currentTarget.value) }
-					/>
-				</div>
-			</div>
-			<div style = 'padding: 10px; display: block;' key = 'issues'>
-				<DisplayErrorStringIfNotUndefined maybeString = { domainExistIssue } />
-				<ContentHashError validContenthash = { validContenthash } contentHashInput = { contentHashInput }/>
-				<DisplayErrorStringIfVariableTrue displayError = { !(validResolutionAddress.value || resolutionAddressInput.value.length === 0) } message = ' - Resolution address is not a valid address'/>
-				<DisplayErrorStringIfVariableTrue displayError = { !(validContenthash.value || validResolutionAddress.value) } message = ' - Set content hash or resolution address or both'/>
-				<DisplayErrorStringIfNotUndefined maybeString = { wrappedIssues } />
-				<DisplayErrorStringIfNotUndefined maybeString = { ownershipIssues } />
-				<SwitchAddress requirementsMet = { loadingInfos.value } maybeAccountAddress = { maybeAccountAddress } maybeSigningAddress = { maybeSigningAddress }/>
-			</div>
-			<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { ownershipIssues.value !== undefined || wrappedIssues.value !== undefined || areContractsDeployed.value !== true || !contentSetProperly.value || !rightAddress.value || checkBoxes.deepValue === undefined || loadingInfos.value || immutable.value || creating.value } onClick = { makeImmutable }> Make immutable { creating.value ? <Spinner/> : <></> }</button>
-		</div> }
+		{ immutable.value ? <ImmutableDomain
+			checkBoxes = { checkBoxes }
+			extendYear = { extendYear }
+			extending = { extending }
+			maybeAccountAddress = { maybeAccountAddress }
+			updateInfos = { updateInfos }
+		/> : <NonImmutableDomain
+			maybeAccountAddress = { maybeAccountAddress }
+			resolutionAddressInput = { resolutionAddressInput }
+			checkBoxes = { checkBoxes }
+			updateInfos = { updateInfos }
+			creating = { creating }
+			contentHashInput = { contentHashInput }
+			handleContentHashInput = { handleContentHashInput }
+			handleResolutionAddressInput = { handleResolutionAddressInput }
+			loadingInfos = { loadingInfos }
+			areContractsDeployed = { areContractsDeployed }
+		/> }
 		<DeployContract areContractsDeployed = { areContractsDeployed } deploy = { deploy }/>
 	</div>
 }
