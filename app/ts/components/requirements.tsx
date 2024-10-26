@@ -41,7 +41,7 @@ export const ChildRequirements = ( { checkBoxes, fuses } : { checkBoxes: FinalCh
 			<Requirement checked = { checkBoxes.isWrapped } primarytext = { `${ checkBoxes.domainInfo.subDomain } is wrapped` } />
 			<Requirement checked = { checkBoxes.fusesBurned } primarytext = { `${ checkBoxes.domainInfo.subDomain } fuses are burnt` } secondaryText = { fuseError } />
 			<Requirement checked = { checkBoxes.childOwnershipIsGivenAway } primarytext = { 'The domain control is restricted' } secondaryText = 'The owner of the domain need to be burned or controlled by the Open Renewal Contract'/>
-			<Requirement checked = { checkBoxes.ownershipOpenRenewalContract } primarytext = { `${ checkBoxes.domainInfo.subDomain } is owned by Open Renewal Contract` } secondaryText = 'The ownership of subdomain is moved to an Open Renewal Contract that allows anyone to renew the domain.'/>
+			<Requirement checked = { checkBoxes.ownershipOpenRenewalContract } primarytext = { `${ checkBoxes.domainInfo.subDomain } is owned by Open Renewal Contract (optional)` } secondaryText = 'The ownership of subdomain is moved to an Open Renewal Contract that allows anyone to renew the domain.'/>
 			<Requirement checked = { checkBoxes.contentHashIsSet || checkBoxes.resolutionAddressIsSet } primarytext = { 'Content hash or address is set'} secondaryText = 'Content hash or address should be set for the domain to be useful'/>
 		</div>
 	</>
@@ -55,7 +55,7 @@ export const ParentRequirements = ( { checkBoxes, fuses } : { checkBoxes: Parent
 			<Requirement checked = { checkBoxes.exists } primarytext = { `${ checkBoxes.domainInfo.subDomain } exists` } />
 			<Requirement checked = { checkBoxes.isWrapped } primarytext = { `${ checkBoxes.domainInfo.subDomain } is wrapped` } />
 			<Requirement checked = { checkBoxes.fusesBurned } primarytext = { `${ checkBoxes.domainInfo.subDomain } fuses are burnt` } secondaryText = { fuseError } />
-			<Requirement checked = { checkBoxes.openRenewalContractIsApproved } primarytext = { `${ checkBoxes.domainInfo.subDomain } has approved Open Renewal Contract` } secondaryText = { `Contract ${ getOpenRenewalManagerAddress() } needs to be approved and fuses "Cannot Approve" needs to be burned in order for anyone to be able to renew the name.` } />
+			<Requirement checked = { checkBoxes.openRenewalContractIsApproved } primarytext = { `${ checkBoxes.domainInfo.subDomain } has approved Open Renewal Contract (optional)` } secondaryText = { `Contract ${ getOpenRenewalManagerAddress() } needs to be approved and fuses "Cannot Approve" needs to be burned in order for anyone to be able to renew the name.` } />
 		</div>
 	</>
 }
