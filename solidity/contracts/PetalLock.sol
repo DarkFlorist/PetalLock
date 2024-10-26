@@ -89,6 +89,16 @@ struct BatchExtend {
 }
 
 contract PetalLock {
+	event MadeImmutable(string fullName, uint256 tokenId, bytes contenthash, address resolutionAddress);
+
+	function formFullPathEnsNameString(string[] memory inputArray) private pure returns (string memory) {
+		bytes memory result;
+		for (uint i = inputArray.length - 1; i >= 0; i--) {
+			result = abi.encodePacked(result, inputArray[i], '.');
+		}
+		return string(abi.encodePacked(result, 'eth'));
+	}
+
 	function batchExtend(BatchExtend[] calldata domainsAndSubDomains) public payable {
 		uint256 domainsAndSubDomainsLength = domainsAndSubDomains.length;
 		for (uint256 i = 0; i < domainsAndSubDomainsLength; i++) {
@@ -185,6 +195,7 @@ contract PetalLock {
 				ensNameWrapper.safeTransferFrom(address(this), originalOwner, uint256(nodePathToChild[i]), 1, bytes(''));
 			}
 		}
+		emit MadeImmutable(formFullPathEnsNameString(labelPathToChild), uint256(nodePathToChild[finalChildIndex]), contenthash, resolutionAddress);
 	}
 
 	// allow only minting wraped ENS names here (required as we are minting them here)
