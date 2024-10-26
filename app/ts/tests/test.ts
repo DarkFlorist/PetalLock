@@ -70,6 +70,16 @@ const ethSimulateTransactions = async (rpc: string, transactions: readonly Block
 	} as const))
 }
 
+const printResults = (result: EthSimulateV1Result) => {
+	console.log(JSON.stringify(EthSimulateV1Result.serialize(result)))
+}
+
+const checkSuccess = (result: EthSimulateV1Result) => {
+	if (allSuccess(result)) return
+	printResults(result)
+	throw new Error('transaction failed')
+}
+
 const runTests = async () => {
 	console.log(`Reneval manager: ${ getOpenRenewalManagerAddress() }`)
 	const testOpenRenewalManagerAddressIsConstant = async () => {
@@ -80,7 +90,7 @@ const runTests = async () => {
 	const testMakeImmutable = async () => {
 		const ownedTokens = [BigInt(namehash(subdomainRouteNames2[0]))] as const
 		const result = await ethSimulateTransactions(rpc, [makeImmutableDomain(subdomainRouteNames2, ownedTokens)])
-		if (!allSuccess(result)) throw new Error('transaction failed')
+		checkSuccess(result)
 	}
 	const testWeHaveTheOrignalToken = async () => {
 		const ownedTokens = [BigInt(namehash(subdomainRouteNames2[0]))] as const
@@ -96,7 +106,7 @@ const runTests = async () => {
 				}))
 			}
 		])
-		if (!allSuccess(result)) throw new Error('transaction failed')
+		checkSuccess(result)
 		if (result[0]?.calls[1]?.returnData === undefined) throw new Error('no return data')
 		if (bytesToUnsigned(result[0]?.calls[1]?.returnData) !== 1n)  throw new Error('we lost the token')
 	}
@@ -133,7 +143,7 @@ const runTests = async () => {
 				})),
 			}
 		])
-		if (!allSuccess(result)) throw new Error('transaction failed')
+		checkSuccess(result)
 		if (result[0]?.calls[2]?.returnData === undefined || result[0]?.calls[3]?.returnData === undefined) throw new Error('no results for calls')
 
 		const parentData = decodeFunctionResult({ abi: ENS_WRAPPER_ABI, functionName: 'getData', data: dataStringWith0xStart(result[0]?.calls[2]?.returnData) })
@@ -237,7 +247,7 @@ const runTests = async () => {
 				}))
 			}
 		])
-		if (!allSuccess(result)) throw new Error('transaction failed')
+		checkSuccess(result)
 		if (result[0]?.calls[1]?.returnData === undefined ||
 			result[0]?.calls[2]?.returnData === undefined ||
 			result[0]?.calls[3]?.returnData === undefined ||
@@ -312,7 +322,7 @@ const runTests = async () => {
 				})),
 			},
 		])
-		if (!allSuccess(result)) throw new Error('transaction failed')
+		checkSuccess(result)
 		if (result[0]?.calls[0]?.returnData === undefined ||
 			result[0]?.calls[1]?.returnData === undefined ||
 			result[0]?.calls[2]?.returnData === undefined ||
@@ -356,7 +366,7 @@ const runTests = async () => {
 				}))
 			},
 		])
-		if (!allSuccess(result)) throw new Error('transaction failed')
+		checkSuccess(result)
 		if (result[0]?.calls[2]?.returnData === undefined || result[0]?.calls[3]?.returnData === undefined) throw new Error('no call results')
 		// child
 		const childData = decodeFunctionResult({ abi: ENS_WRAPPER_ABI, functionName: 'getData', data: dataStringWith0xStart(result[0]?.calls[2]?.returnData) })
@@ -388,7 +398,7 @@ const runTests = async () => {
 				})),
 			}
 		])
-		if (!allSuccess(result)) throw new Error('transaction failed')
+		checkSuccess(result)
 	}
 	const checkApprovals = async() => {
 		const ownedTokens = [BigInt(namehash(subdomainRouteNames3[0]))]
@@ -422,7 +432,7 @@ const runTests = async () => {
 				})),
 			},
 		])
-		if (!allSuccess(result)) throw new Error('transaction failed')
+		checkSuccess(result)
 		if (result[0]?.calls[1]?.returnData === undefined || result[0]?.calls[2]?.returnData === undefined || result[0]?.calls[3]?.returnData === undefined) throw new Error('fff')
 
 		const renewalManager = getOpenRenewalManagerAddress()
@@ -463,7 +473,7 @@ const runTests = async () => {
 				})),
 			},
 		])
-		if (!allSuccess(result)) throw new Error('transaction failed')
+		checkSuccess(result)
 	}
 	const testImmutableDomain = async() => {
 		const ownedTokens = [BigInt(namehash(subdomainRouteNames2[0]))]
@@ -516,7 +526,7 @@ const runTests = async () => {
 				}))
 			},
 		])
-		if (!allSuccess(result)) throw new Error('transaction failed')
+		checkSuccess(result)
 		if (result[0]?.calls[0]?.returnData === undefined ||
 			result[0]?.calls[1]?.returnData === undefined ||
 			result[0]?.calls[2]?.returnData === undefined ||
@@ -565,7 +575,7 @@ const runTests = async () => {
 				})),
 			},
 		])
-		if (!allSuccess(result)) throw new Error('transaction failed')
+		checkSuccess(result)
 		if (result[0]?.calls[1]?.returnData === undefined || result[0]?.calls[3]?.returnData === undefined) throw new Error('no results')
 		const before = decodeFunctionResult({ abi: ENS_WRAPPER_ABI, functionName: 'getData', data: dataStringWith0xStart(result[0]?.calls[1]?.returnData) })
 		const after = decodeFunctionResult({ abi: ENS_WRAPPER_ABI, functionName: 'getData', data: dataStringWith0xStart(result[0]?.calls[3]?.returnData) })
@@ -593,7 +603,7 @@ const runTests = async () => {
 				value: parseEther('100'),
 			},
 		])
-		if (!allSuccess(result)) throw new Error('transaction failed')
+		checkSuccess(result)
 	}
 	const domainOrderWrong = async () => {
 		const ownedTokens = [BigInt(namehash(subdomainRouteNames2[0]))]

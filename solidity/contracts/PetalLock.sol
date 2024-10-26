@@ -42,6 +42,7 @@ interface IEnsNameWrapper {
 	function extendExpiry(bytes32 node, bytes32 labelhash, uint64 expiry) external returns (uint64);
 	function approve(address to, uint256 tokenId) external;
 	function getApproved(uint256 id) external returns (address);
+	function ownerOf(uint256 id) external view returns (address owner);
 }
 
 interface IEnsPublicResolver {
@@ -93,8 +94,8 @@ contract PetalLock {
 
 	function formFullPathEnsNameString(string[] memory inputArray) private pure returns (string memory) {
 		bytes memory result;
-		for (uint i = inputArray.length - 1; i >= 0; i--) {
-			result = abi.encodePacked(result, inputArray[i], '.');
+		for (uint i = inputArray.length; i > 0; i--) {
+			result = abi.encodePacked(result, inputArray[i - 1], '.');
 		}
 		return string(abi.encodePacked(result, 'eth'));
 	}
@@ -190,12 +191,12 @@ contract PetalLock {
 
 		// return all tokens that we own in the path
 		for (uint256 i = 0; i < pathLength; i++) {
-			(address owner,,) = ensNameWrapper.getData(uint256(nodePathToChild[i]));
+			address owner = ensNameWrapper.ownerOf(uint256(nodePathToChild[i]));
 			if (owner == address(this)) {
 				ensNameWrapper.safeTransferFrom(address(this), originalOwner, uint256(nodePathToChild[i]), 1, bytes(''));
 			}
 		}
-		emit MadeImmutable(formFullPathEnsNameString(labelPathToChild), uint256(nodePathToChild[finalChildIndex]), contenthash, resolutionAddress);
+		emit MadeImmutable(formFullPathEnsNameString(labelPathToChild), uint256(finalChildNode), contenthash, resolutionAddress);
 	}
 
 	// allow only minting wraped ENS names here (required as we are minting them here)
