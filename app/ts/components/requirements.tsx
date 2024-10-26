@@ -94,11 +94,35 @@ export const Immutable = ( { checkBoxesArray } : { checkBoxesArray: OptionalSign
 	if (checkBoxesArray.deepValue === undefined) return <></>
 	const checkBoxes = checkBoxesArray.deepValue[checkBoxesArray.deepValue.length - 1]
 	if (checkBoxes === undefined || checkBoxes.type !== 'finalChild') return <></>
+
+	function humanReadableDateDelta(secondsDiff: number) {
+		const secondsInHour = 3600
+		const secondsInDay = secondsInHour * 24
+		const secondsInMonth = secondsInDay * 30
+		const secondsInYear = secondsInDay * 365
+
+		const years = Math.floor(secondsDiff / secondsInYear)
+		secondsDiff %= secondsInYear
+
+		const months = Math.floor(secondsDiff / secondsInMonth)
+		secondsDiff %= secondsInMonth
+
+		const days = Math.floor(secondsDiff / secondsInDay)
+
+		const parts: string[] = []
+		if (years > 0) parts.push(`${ years } years`)
+		if (months > 0) parts.push(`${ months } months`)
+		if (days > 0) parts.push(`${ days } days`)
+
+		return parts.length > 0 ? parts.join(' ') : 'less than a day'
+	}
+	const dateDiff = computed(() => humanReadableDateDelta((checkBoxes.domainInfo.expiry.getTime() - new Date().getTime()) / 1000))
+
 	return <div>
 		<div style = 'padding-top: 30px; padding-bottom: 30px; align-items: center; display: grid; width: 100%'>
 			{ checkBoxes.immutable ? <>
 				<p class = 'status-green'>
-					{`IMMUTABLE until ${ checkBoxes.domainInfo.expiry.toISOString() }` }
+					{`IMMUTABLE for ${ dateDiff } (until ${ checkBoxes.domainInfo.expiry.toISOString().substring(0, 10) })` }
 				</p>
 			</>: <p class = 'status-red'> NOT IMMUTABLE </p> }
 		</div>
