@@ -123,7 +123,7 @@ export const Immutable = ( { checkBoxesArray } : { checkBoxesArray: OptionalSign
 		<div style = 'padding-top: 30px; padding-bottom: 30px; align-items: center; display: grid; width: 100%'>
 			{ checkBoxes.immutable ? <>
 				<p class = 'status-green'>
-					{`IMMUTABLE for ${ dateDiff } (until ${ dateString })` }
+					{`IMMUTABLE for about ${ dateDiff } (until ${ dateString })` }
 				</p>
 			</>: <p class = 'status-red'> NOT IMMUTABLE </p> }
 		</div>
