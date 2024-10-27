@@ -200,24 +200,25 @@ button:disabled, button[disabled] {
 }
 
 .check {
-	-webkit-appearance: none; /*hides the default checkbox*/
-	height: 35px;
-	width: 35px;
+	-webkit-appearance: none;
+	height: 20px;
+	width: 20px;
 	position: relative;
-	background-color: #FE0006;
 	text-align: center;
 	font-weight: 600;
 	color: white;
-	border-radius: 3px;
-	outline: none;
-	font-size: x-large;
-	align-items: center
+	border-radius: 4px;
+	line-height: 18px;
+	font-size: small;
+	border-style: solid;
+	border-color: gray;
+	border-width: 1px;
 }
 .check:checked {
 	background-color: #0E9700;
 }
 .check:before {
-	content: "✖";
+	content: "";
 }
 .check:checked:before {
 	content: "✔";
