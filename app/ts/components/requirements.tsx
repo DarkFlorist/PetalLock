@@ -110,9 +110,9 @@ export const Immutable = ( { checkBoxesArray } : { checkBoxesArray: OptionalSign
 		const days = Math.floor(secondsDiff / secondsInDay)
 
 		const parts: string[] = []
-		if (years > 0) parts.push(`${ years } years`)
-		if (months > 0) parts.push(`${ months } months`)
-		if (days > 0) parts.push(`${ days } days`)
+		if (years > 0) parts.push(`${ years } year${ years > 1 ? 's' : '' }`)
+		if (months > 0 && years < 5) parts.push(`${ months } month${ months > 1 ? 's' : '' }`)
+		if (days > 0 && years < 2) parts.push(`${ days } day${ days > 1 ? 's' : '' }`)
 
 		return parts.length > 0 ? parts.join(' ') : 'less than a day'
 	}
