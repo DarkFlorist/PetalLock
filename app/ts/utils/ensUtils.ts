@@ -175,8 +175,6 @@ export const getRequiredFusesWithoutApproval = (domainIndex: number, domainInfos
 }
 
 export const getRequiredFusesWithApproval = (domainIndex: number, domainInfos: readonly DomainInfo[]) => {
-	console.log('getRequiredFusesWithApproval')
-	console.log(domainInfos)
 	if (domainInfos.length === 1) return SINGLE_DOMAIN_FUSES
 	if (domainIndex === 0 && domainInfos.length > 1) return TOP_PARENT_FUSES
 	if (domainIndex === domainInfos.length - 1) return FINAL_CHILD_FUSES

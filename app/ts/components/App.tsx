@@ -62,7 +62,7 @@ export function App() {
 	const inputValue = useSignal<string>('')
 	const contentHashInput = useSignal<string>('')
 	const resolutionAddressInput = useSignal<string>('')
-	const errorString = useOptionalSignal<string>(undefined)
+	const errorString = useSignal<string>('')
 	const loadingAccount = useSignal<boolean>(false)
 	const isWindowEthereum = useSignal<boolean>(true)
 	const areContractsDeployed = useSignal<boolean | undefined>(undefined)
@@ -79,12 +79,11 @@ export function App() {
 
 	const setError = (error: unknown) => {
 		if (error === undefined) {
-			errorString.value = undefined
+			errorString.value = ''
 			return
 		}
 		const ensured = ensureError(error)
-		console.error(error)
-		errorString.deepValue = ensured.message
+		errorString.value = ensured.message
 	}
 
 	const clear = () => {
@@ -129,7 +128,7 @@ export function App() {
 					openRenewalContractIsApproved: currElement.approved === getOpenRenewalManagerAddress() && currElement.fuses.includes('Cannot Approve')
 				}
 			})
-			errorString.value = undefined
+			errorString.value = ''
 		} catch(e: unknown) {
 			setError(e)
 		} finally {
@@ -146,7 +145,7 @@ export function App() {
 			const ensSubDomain = inputValue.value.toLowerCase()
 			if (!isValidEnsSubDomain(ensSubDomain)) {
 				clear()
-				return setError(`${ ensSubDomain } is not a valid ENS subdomain. The format should be similar to "2.horswap.eth" or "1.lunaria.darkflorist.eth."`)
+				return setError(`${ ensSubDomain } is not a valid ENS subdomain. The format should be similar to "2.horswap.eth" or "1.lunaria.darkflorist.eth".`)
 			}
 			setError(undefined)
 			updateInfos(true)
@@ -219,7 +218,7 @@ export function App() {
 			/>
 
 			<LoadingSpinner loading = { loadingInfos.value === true || loadingAccount.value }/>
-			<ErrorComponent message = { errorString } show = { errorString.deepValue !== undefined } />
+			<ErrorComponent message = { errorString.value } show = { errorString.value !== '' } />
 			<ErrorComponent show = { chainId.value !== undefined && chainId.value !== 1 } message = { 'PetalLock functions only on Ethereum Mainnet. Please switch to Ethereum Mainnet.' }/>
 			<EnsRegistryError checkBoxes = { checkBoxes } />
 			<Immutable checkBoxesArray = { checkBoxes } />
