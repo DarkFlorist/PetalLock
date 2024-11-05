@@ -41,11 +41,19 @@ const LoadingSpinner = ({ loading }: LoadingSpinnerProps) => {
 
 interface ErrorComponentProps {
 	show: boolean
-	message: string | OptionalSignal<string>
+	message: string
 }
 const ErrorComponent = ({ show, message }: ErrorComponentProps) => {
 	if (show === false) return <></>
 	return <p class = 'error-component'> { message } </p>
+}
+
+interface OptionalErrorComponentProps {
+	message: OptionalSignal<string>
+}
+const OptionalErrorErrorComponent = ({ message }: OptionalErrorComponentProps) => {
+	if (message.value === undefined) return <></>
+	return <p class = 'error-component'> { message.deepValue } </p>
 }
 
 interface EnsRegistryErrorProps {
@@ -62,7 +70,7 @@ export function App() {
 	const inputValue = useSignal<string>('')
 	const contentHashInput = useSignal<string>('')
 	const resolutionAddressInput = useSignal<string>('')
-	const errorString = useSignal<string>('')
+	const errorString = useOptionalSignal<string>(undefined)
 	const loadingAccount = useSignal<boolean>(false)
 	const isWindowEthereum = useSignal<boolean>(true)
 	const areContractsDeployed = useSignal<boolean | undefined>(undefined)
@@ -79,11 +87,11 @@ export function App() {
 
 	const setError = (error: unknown) => {
 		if (error === undefined) {
-			errorString.value = ''
+			errorString.value = undefined
 			return
 		}
 		const ensured = ensureError(error)
-		errorString.value = ensured.message
+		errorString.deepValue = ensured.message
 	}
 
 	const clear = () => {
@@ -128,7 +136,7 @@ export function App() {
 					openRenewalContractIsApproved: currElement.approved === getOpenRenewalManagerAddress() && currElement.fuses.includes('Cannot Approve')
 				}
 			})
-			errorString.value = ''
+			errorString.value = undefined
 		} catch(e: unknown) {
 			setError(e)
 		} finally {
@@ -218,7 +226,7 @@ export function App() {
 			/>
 
 			<LoadingSpinner loading = { loadingInfos.value === true || loadingAccount.value }/>
-			<ErrorComponent message = { errorString.value } show = { errorString.value !== '' } />
+			<OptionalErrorErrorComponent message = { errorString }/>
 			<ErrorComponent show = { chainId.value !== undefined && chainId.value !== 1 } message = { 'PetalLock functions only on Ethereum Mainnet. Please switch to Ethereum Mainnet.' }/>
 			<EnsRegistryError checkBoxes = { checkBoxes } />
 			<Immutable checkBoxesArray = { checkBoxes } />
