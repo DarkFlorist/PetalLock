@@ -144,21 +144,14 @@ export const DeployContract = ({ areContractsDeployed, deploy }: DeployProps) =>
 	return <></>
 }
 
-interface DisplayErrorStringIfNotUndefinedProps {
-	maybeString: Signal<string | undefined>
-}
-const DisplayErrorStringIfNotUndefined = ({ maybeString }: DisplayErrorStringIfNotUndefinedProps) => {
-	if (maybeString.value === undefined) return <></>
-	return <p class = 'paragraph' style = 'color: #b43c42'> { maybeString.value } </p>
-}
-
-interface DisplayErrorStringIfVariableTrueProps {
-	displayError: boolean
-	message: string
-}
-const DisplayErrorStringIfVariableTrue = ({ message, displayError }: DisplayErrorStringIfVariableTrueProps) => {
-	if (displayError === false) return <></>
-	return <p class = 'paragraph' style = 'color: #b43c42'> { message } </p>
+type DisplayErrorProps  = { displayError: boolean, message: string } | { message: OptionalSignal<string> | ReadonlySignal<string | undefined> }
+const DisplayError = (props: DisplayErrorProps) => {
+	if (!('displayError' in props)) {
+		if (props.message.value === undefined) return <></>
+		return <p class = 'paragraph' style = 'color: #b43c42'> { props.message.value } </p>
+	}
+	if (props.displayError === false) return <></>
+	return <p class = 'paragraph' style = 'color: #b43c42'> { props.message } </p>
 }
 
 interface ContentHashErrorProps {
@@ -169,10 +162,9 @@ const ContentHashError = ({ contentHashInput, validContenthash }: ContentHashErr
 	if (validContenthash.value === true) return <></>
 	if (contentHashInput.value.length === 0) return <></>
 	const separator = contentHashInput.value.includes('://')
-	if (separator === false) return <DisplayErrorStringIfVariableTrue displayError = { true } message = ' - Content hash needs to include protocol and hash, eg ("ipfs://bafy...")'/>
-	return <DisplayErrorStringIfVariableTrue displayError = { true } message = ' - Content hash is not valid'/>
+	if (separator === false) return <DisplayError displayError = { true } message = ' - Content hash needs to include protocol and hash, eg ("ipfs://bafy...")'/>
+	return <DisplayError displayError = { true } message = ' - Content hash is not valid'/>
 }
-
 
 interface ImmutableDomainProps {
 	checkBoxes: OptionalSignal<CheckBoxes>
@@ -333,12 +325,12 @@ const NonImmutableDomain = ({ checkBoxes, maybeAccountAddress, updateInfos, crea
 			</div>
 		</div>
 		<div style = 'padding: 10px; display: block;' key = 'issues'>
-			<DisplayErrorStringIfNotUndefined maybeString = { domainExistIssue } />
+			<DisplayError message = { domainExistIssue } />
 			<ContentHashError validContenthash = { validContenthash } contentHashInput = { contentHashInput }/>
-			<DisplayErrorStringIfVariableTrue displayError = { !(validResolutionAddress.value || resolutionAddressInput.value.length === 0) } message = ' - Resolution address is not a valid address'/>
-			<DisplayErrorStringIfVariableTrue displayError = { !(validContenthash.value || validResolutionAddress.value) } message = ' - Set content hash or resolution address or both'/>
-			<DisplayErrorStringIfNotUndefined maybeString = { wrappedIssues } />
-			<DisplayErrorStringIfNotUndefined maybeString = { ownershipIssues } />
+			<DisplayError displayError = { !(validResolutionAddress.value || resolutionAddressInput.value.length === 0) } message = ' - Resolution address is not a valid address'/>
+			<DisplayError displayError = { !(validContenthash.value || validResolutionAddress.value) } message = ' - Set content hash or resolution address or both'/>
+			<DisplayError message = { wrappedIssues } />
+			<DisplayError message = { ownershipIssues } />
 			<SwitchAddress requirementsMet = { loadingInfos.value } maybeAccountAddress = { maybeAccountAddress } maybeSigningAddress = { maybeSigningAddress }/>
 		</div>
 		<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { ownershipIssues.value !== undefined || wrappedIssues.value !== undefined || areContractsDeployed.value !== true || !contentSetProperly.value || !rightAddress.value || checkBoxes.deepValue === undefined || loadingInfos.value || creating.value } onClick = { makeImmutable }> Make immutable { creating.value ? <Spinner/> : <></> }</button>
