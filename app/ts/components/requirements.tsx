@@ -1,4 +1,4 @@
-import { computed, ReadonlySignal, Signal, useSignal } from '@preact/signals'
+import { computed, ReadonlySignal, Signal, useComputed, useSignal } from '@preact/signals'
 import { AccountAddress, CheckBoxes, EnsFuseName, FinalChildChecks, ParentChecks } from '../types/types.js'
 import { callPetalLock, deployPetalLockAndRenewalManager, getOpenRenewalManagerAddress, getRequiredFusesWithoutApproval, renewDomainByYear, renewDomainToMax } from '../utils/ensUtils.js'
 import { isSameAddress } from '../utils/utilities.js'
@@ -263,33 +263,33 @@ const NonImmutableDomain = ({ checkBoxes, maybeAccountAddress, updateInfos, crea
 		}
 	}
 
-	const maybeSigningAddress = computed(() => {
+	const maybeSigningAddress = useComputed(() => {
 		if (checkBoxes.deepValue === undefined) return undefined
 		return checkBoxes.deepValue[0]?.domainInfo.owner
 	})
 
-	const rightAddress = computed(() => isSameAddress(maybeSigningAddress.value, maybeAccountAddress.deepValue))
-	const validContenthash = computed(() => isValidContentHashString(contentHashInput.value.trim()))
-	const validResolutionAddress = computed(() => isAddress(resolutionAddressInput.value.trim()))
+	const rightAddress = useComputed(() => isSameAddress(maybeSigningAddress.value, maybeAccountAddress.deepValue))
+	const validContenthash = useComputed(() => isValidContentHashString(contentHashInput.value.trim()))
+	const validResolutionAddress = useComputed(() => isAddress(resolutionAddressInput.value.trim()))
 
-	const wrappedIssues = computed(() => {
+	const wrappedIssues = useComputed(() => {
 		const nonWrappedTokens = checkBoxes.deepValue?.filter((x) => x.exists && !x.isWrapped)
 		if (nonWrappedTokens === undefined || nonWrappedTokens.length === 0) return undefined
 		return ` - The domain${ nonWrappedTokens.length > 1 ? 's' : '' }: ${ nonWrappedTokens.map((token) => `"${ token.domainInfo.subDomain }"`).join(', ')} need to be wrapped for PetalLock to function`
 	})
-	const ownershipIssues = computed(() => {
+	const ownershipIssues = useComputed(() => {
 		const managerAndOwners = checkBoxes.deepValue?.filter((x) => x.exists && x.isWrapped).map((x) => [x.domainInfo.owner, x.domainInfo.manager])
 		if (managerAndOwners === undefined || managerAndOwners.length === 0) return undefined
 		const unique = Array.from(new Set(managerAndOwners.flat().flat().filter((address) => address !== ENS_NAME_WRAPPER)))
 		if (unique.length <= 1) return undefined
 		return ` - The domain${ unique.length > 1 ? 's' : '' } need to be owned and managed by the same address. Currently they are managed by addresses: ${ unique.join(', ') }`
 	})
-	const domainExistIssue = computed(() => {
+	const domainExistIssue = useComputed(() => {
 		const first = checkBoxes.deepValue?.at(0)
 		if (first === undefined || first.exists) return undefined
 		return ` - The domain ${ first.domainInfo.subDomain } need to be created before you can use PetalLock to create immutable subdomains under it`
 	})
-	const contentSetProperly = computed(() => {
+	const contentSetProperly = useComputed(() => {
 		if (resolutionAddressInput.value.length === 0 && validContenthash.value) return true
 		if (contentHashInput.value.length === 0 && validResolutionAddress.value) return true
 		if (validContenthash.value && validResolutionAddress.value) return true
