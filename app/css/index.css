@@ -15,6 +15,7 @@
 	border-radius: 25px;
 	margin-inline: auto;
 	justify-content: center;
+	margin-bottom: 0px;
 }
 div {
 	display: flex;
@@ -160,11 +161,6 @@ body {
 	display: flex;
 	justify-content: center;
 	flex-direction: column;
-}
-
-a {
-	color: inherit;
-	text-decoration: inherit;
 }
 
 .text-white:hover {
