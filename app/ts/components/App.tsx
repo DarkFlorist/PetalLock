@@ -200,7 +200,7 @@ export function App() {
 		updateChainId()
 	}, [maybeAccountAddress.value])
 
-	return <main>
+	return <main style = 'overflow: auto;'>
 		<div class = 'app'>
 			<WalletComponent loadingAccount = { loadingAccount } isWindowEthereum = { isWindowEthereum } maybeAccountAddress = { maybeAccountAddress } />
 			<div style = 'display: block'>
@@ -213,6 +213,7 @@ export function App() {
 			<input
 				class = 'input'
 				type = 'text'
+				style = { 'width: 100%;'}
 				placeholder = '2.horswap.eth'
 				value = { inputValue.value }
 				onInput = { e => handleInput(e.currentTarget.value) }

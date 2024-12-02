@@ -5,7 +5,6 @@
 }
 
 .app {
-	display: grid;
 	max-width: 700px;
 	margin: 40px;
 	border: 1px solid #ccc;
@@ -14,6 +13,8 @@
 	background-color: #f9f9f9;
 	border: 2px solid #ccc;
 	border-radius: 25px;
+	margin-inline: auto;
+	justify-content: center;
 }
 div {
 	display: flex;
@@ -57,6 +58,7 @@ svg.spinner > circle {
 	display: grid;
 	grid-template-columns: auto;
 	padding: 10px;
+	overflow: hidden;
 }
 
 .grid-container-bordered {
@@ -65,6 +67,7 @@ svg.spinner > circle {
 	border: 2px solid #ccc;
 	border-radius: 25px;
 	padding: 10px;
+	width: 100%;
 }
 
 .grid-item {
@@ -79,8 +82,6 @@ svg.spinner > circle {
 
 body {
 	min-height: 100vh;
-	display: grid;
-	place-content: center;
 	background: linear-gradient(to right,#4fabd6, #a36bdb);
 	background-blend-mode: screen;
 	margin: 0px;
@@ -241,9 +242,10 @@ button:disabled, button[disabled] {
 
 .form-control {
 	display: grid;
-	grid-template-columns: min-content max-content auto;
+	grid-template-columns: min-content auto auto;
 	align-items: center;
 	gap: 10px;
+	overflow: hidden;
 }
 
 .error-component {
@@ -320,4 +322,9 @@ button:disabled, button[disabled] {
 	padding-bottom: 20px;
 	margin-top: 20px;
 	width: 100%;
+}
+
+p {
+	overflow: hidden;
+	text-overflow: ellipsis;
 }

@@ -296,11 +296,11 @@ const NonImmutableDomain = ({ checkBoxes, maybeAccountAddress, updateInfos, crea
 		return false
 	})
 
-	return <div key = 'dialog'>
-		<div style = 'padding: 10px;'>
-			<p style = 'white-space: nowrap; margin: 0; font-size: 24px; padding-bottom: 10px'> Make the domain immutable! </p>
-			<div style = 'display: grid; grid-template-columns: min-content auto; width: 100%; gap: 10px; padding-bottom: 10px;'>
-				<p style = 'white-space: nowrap; margin: 0;'>{ `Content hash:` }</p>
+	return <div key = 'dialog' style = 'width: 100%'>
+		<div style = 'padding: 10px; width: 100%'>
+			<p style = 'margin: 0; font-size: 24px; padding-bottom: 10px'> Make the domain immutable! </p>
+			<div style = 'display: grid; width: 100%; gap: 10px; padding-bottom: 10px;'>
+				<p style = 'margin: 0;'>{ `Content hash:` }</p>
 				<input
 					style = 'height: fit-content;'
 					class = 'input'
@@ -311,8 +311,8 @@ const NonImmutableDomain = ({ checkBoxes, maybeAccountAddress, updateInfos, crea
 					onInput = { e => handleContentHashInput(e.currentTarget.value) }
 				/>
 			</div>
-			<div style = 'display: grid; grid-template-columns: min-content auto; width: 100%; gap: 10px;'>
-				<p style = 'white-space: nowrap; margin: 0;'> Resolution address: </p>
+			<div style = 'display: grid; width: 100%; gap: 10px;'>
+				<p style = 'margin: 0;'> Resolution address: </p>
 				<input
 					style = 'height: fit-content;'
 					class = 'input'
@@ -324,7 +324,7 @@ const NonImmutableDomain = ({ checkBoxes, maybeAccountAddress, updateInfos, crea
 				/>
 			</div>
 		</div>
-		<div style = 'padding: 10px; display: block;' key = 'issues'>
+		<div style = 'padding: 10px; width: 100%;' key = 'issues'>
 			<DisplayError message = { domainExistIssue } />
 			<ContentHashError validContenthash = { validContenthash } contentHashInput = { contentHashInput }/>
 			<DisplayError displayError = { !(validResolutionAddress.value || resolutionAddressInput.value.length === 0) } message = ' - Resolution address is not a valid address'/>
@@ -366,7 +366,7 @@ export const Create = ( { contentHashInput, resolutionAddressInput, loadingInfos
 	const finalChild = checkBoxes.deepValue[checkBoxes.deepValue.length - 1]
 	const subDomain = finalChild?.domainInfo.subDomain
 	if (subDomain === undefined) throw new Error('missing subdomain')
-	return <div style = 'padding-top: 10px;'>
+	return <div style = 'padding-top: 10px; width: 100%'>
 		{ immutable.value ? <ImmutableDomain
 			checkBoxes = { checkBoxes }
 			extendYear = { extendYear }
