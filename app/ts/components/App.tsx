@@ -15,7 +15,7 @@ interface WalletComponentProps {
 }
 
 const WalletComponent = ({ maybeAccountAddress, loadingAccount, isWindowEthereum }: WalletComponentProps) => {
-	if (!isWindowEthereum.value) return <p class = 'paragraph'> An Ethereum enabled wallet is required to make immutable* domains.</p>
+	if (!isWindowEthereum.value) return <p class = 'paragraph'> An Ethereum enabled wallet is required to make almost immutable* domains.</p>
 	if (loadingAccount.value) return <></>
 	const connect = async () => {
 		maybeAccountAddress.deepValue = await requestAccounts()
@@ -207,7 +207,7 @@ export function App() {
 				<div class = 'petal-lock'>
 					<img src = 'favicon.svg' alt = 'Icon' style ='width: 60px;'/> PetalLock
 				</div>
-				<p class = 'sub-title'>Make immutable* ENS domains and subdomains</p>
+				<p class = 'sub-title'>Make almost immutable* ENS domains and subdomains</p>
 			</div>
 
 			<input
