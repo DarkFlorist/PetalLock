@@ -15,7 +15,7 @@ interface WalletComponentProps {
 }
 
 const WalletComponent = ({ maybeAccountAddress, loadingAccount, isWindowEthereum }: WalletComponentProps) => {
-	if (!isWindowEthereum.value) return <p class = 'paragraph'> An Ethereum enabled wallet is required to make immutable domains.</p>
+	if (!isWindowEthereum.value) return <p class = 'paragraph'> An Ethereum enabled wallet is required to make almost* immutable domains.</p>
 	if (loadingAccount.value) return <></>
 	const connect = async () => {
 		maybeAccountAddress.deepValue = await requestAccounts()
@@ -207,7 +207,7 @@ export function App() {
 				<div class = 'petal-lock'>
 					<img src = 'favicon.svg' alt = 'Icon' style ='width: 60px;'/> PetalLock
 				</div>
-				<p class = 'sub-title'>Make immutable ENS domains and subdomains</p>
+				<p class = 'sub-title'>Make almost* immutable ENS domains and subdomains</p>
 			</div>
 
 			<input
@@ -241,6 +241,13 @@ export function App() {
 				extendYear = { extendYear }
 				extending = { extending }
 			/>
+		</div>
+		<div class = 'text-white/50 text-center'>
+			<p style = 'max-width: 700px;'>*)
+				There are two bugs in the Ethereum Name Service (ENS) that allow the ENS DAO to seize ENS names. These flaws make it impossible to create truly immutable names.
+				<br/>
+				<a href = 'https://discuss.ens.domains/t/temp-check-executable-revoke-the-daos-ability-to-upgrade-the-name-wrapper/19920/8'>https://discuss.ens.domains/t/temp-check-executable-revoke-the-daos-ability-to-upgrade-the-name-wrapper/19920/8</a>
+			</p>
 		</div>
 		<div class = 'text-white/50 text-center'>
 			<div class = 'mt-8'>
