@@ -82,14 +82,14 @@ export const EnsRequirements = () => {
 export const Requirements = ({ checkBoxesArray } : { checkBoxesArray: OptionalSignal<CheckBoxes> }) => {
 	const allCheckBoxes = checkBoxesArray.deepValue
 	if (allCheckBoxes === undefined) return <></>
-	return <div class = 'grid-container-bordered'> <>
+	return <div class = 'grid-container-bordered'>
 		{ [...allCheckBoxes].reverse().map((check, index) => {
 			const fuses = getRequiredFusesWithoutApproval(allCheckBoxes.length - index - 1, allCheckBoxes.map((c) => c.domainInfo))
 			if (check.type === 'parent') return <ParentRequirements checkBoxes = { check } fuses = { fuses }/>
 			return <ChildRequirements checkBoxes = { check } fuses = { fuses }/>
 		}) }
 		<EnsRequirements/>
-	</></div>
+	</div>
 }
 
 interface RequirementProps {
