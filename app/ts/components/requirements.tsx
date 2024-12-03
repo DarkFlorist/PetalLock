@@ -149,7 +149,7 @@ export const Immutable = ( { checkBoxesArray } : { checkBoxesArray: OptionalSign
 				</p>
 			</>: <p class = 'status-red'> NOT IMMUTABLE </p> }
 		</div>
-		{ checkBoxes.immutable ? <></> : <p style = 'margin: 0px; margin-bottom: 10px; padding-left: 10px;' class = 'requirement'> { checkBoxes.domainInfo.subDomain } should satisfy the following conditions to be almost immutable*: </p> }
+		{ checkBoxes.immutable ? <></> : <p style = 'margin: 0px; margin-bottom: 10px; padding-left: 10px;' class = 'requirement'> { checkBoxes.domainInfo.subDomain } should satisfy the following conditions to be immutable: </p> }
 	</div>
 }
 
