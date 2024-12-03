@@ -69,7 +69,7 @@ export const EnsRequirements = () => {
 					<label class = 'form-control'>
 						<input type = 'checkbox' name = 'switch' class = 'check' checked = { false } disabled = { true }/>
 						<p class = 'paragraph checkbox-text requirement'>
-							Convince ENS DAO to fix the bug reported <a href = 'https://discuss.ens.domains/t/temp-check-executable-revoke-the-daos-ability-to-upgrade-the-name-wrapper/19920/8'>the-daos-ability-to-upgrade-the-name-wrapper</a> so they cannot rug you.
+							Convince ENS DAO to fix the bug reported in <a href = 'https://discuss.ens.domains/t/temp-check-executable-revoke-the-daos-ability-to-upgrade-the-name-wrapper/19920/8'>the-daos-ability-to-upgrade-the-name-wrapper</a> so they cannot rug you.
 						</p>
 					</label>
 				</div>
