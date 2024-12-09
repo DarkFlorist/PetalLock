@@ -60,14 +60,36 @@ export const ParentRequirements = ( { checkBoxes, fuses } : { checkBoxes: Parent
 	</>
 }
 
+export const EnsRequirements = () => {
+	return <>
+		<p class = 'subdomain-header'> Ethereum Name Service </p>
+		<div class = 'grid-container'>
+			<div class = 'grid-item' style = 'justify-self: start'>
+				<div style = 'display: grid; grid-template-rows: auto auto;'>
+					<label class = 'form-control'>
+						<input type = 'checkbox' name = 'switch' class = 'check' checked = { false } disabled = { true }/>
+						<p class = 'paragraph checkbox-text requirement'>
+							Convince ENS DAO to fix the bug reported in <a href = 'https://discuss.ens.domains/t/temp-check-executable-revoke-the-daos-ability-to-upgrade-the-name-wrapper/19920/8'>the-daos-ability-to-upgrade-the-name-wrapper</a> so they cannot rug you.
+						</p>
+					</label>
+				</div>
+			</div>
+		</div>
+	</>
+}
+
+
 export const Requirements = ({ checkBoxesArray } : { checkBoxesArray: OptionalSignal<CheckBoxes> }) => {
 	const allCheckBoxes = checkBoxesArray.deepValue
 	if (allCheckBoxes === undefined) return <></>
-	return <div class = 'grid-container-bordered'> { [...allCheckBoxes].reverse().map((check, index) => {
-		const fuses = getRequiredFusesWithoutApproval(allCheckBoxes.length - index - 1, allCheckBoxes.map((c) => c.domainInfo))
-		if (check.type === 'parent') return <ParentRequirements checkBoxes = { check } fuses = { fuses }/>
-		return <ChildRequirements checkBoxes = { check } fuses = { fuses }/>
-	}) } </div>
+	return <div class = 'grid-container-bordered'>
+		{ [...allCheckBoxes].reverse().map((check, index) => {
+			const fuses = getRequiredFusesWithoutApproval(allCheckBoxes.length - index - 1, allCheckBoxes.map((c) => c.domainInfo))
+			if (check.type === 'parent') return <ParentRequirements checkBoxes = { check } fuses = { fuses }/>
+			return <ChildRequirements checkBoxes = { check } fuses = { fuses }/>
+		}) }
+		<EnsRequirements/>
+	</div>
 }
 
 interface RequirementProps {
@@ -123,7 +145,7 @@ export const Immutable = ( { checkBoxesArray } : { checkBoxesArray: OptionalSign
 		<div style = 'padding-top: 30px; padding-bottom: 30px; align-items: center; display: grid; width: 100%'>
 			{ checkBoxes.immutable ? <>
 				<p class = 'status-green'>
-					{`IMMUTABLE for about ${ dateDiff } (until ${ dateString })` }
+					{`Almost* IMMUTABLE for about ${ dateDiff } (until ${ dateString })` }
 				</p>
 			</>: <p class = 'status-red'> NOT IMMUTABLE </p> }
 		</div>
@@ -287,7 +309,7 @@ const NonImmutableDomain = ({ checkBoxes, maybeAccountAddress, updateInfos, crea
 	const domainExistIssue = useComputed(() => {
 		const first = checkBoxes.deepValue?.at(0)
 		if (first === undefined || first.exists) return undefined
-		return ` - The domain ${ first.domainInfo.subDomain } need to be created before you can use PetalLock to create immutable subdomains under it`
+		return ` - The domain ${ first.domainInfo.subDomain } need to be created before you can use PetalLock to create almost* immutable subdomains under it`
 	})
 	const contentSetProperly = useComputed(() => {
 		if (resolutionAddressInput.value.length === 0 && validContenthash.value) return true
@@ -298,7 +320,7 @@ const NonImmutableDomain = ({ checkBoxes, maybeAccountAddress, updateInfos, crea
 
 	return <div key = 'dialog' style = 'width: 100%'>
 		<div style = 'padding: 10px; width: 100%'>
-			<p style = 'margin: 0; font-size: 24px; padding-bottom: 10px'> Make the domain immutable! </p>
+			<p style = 'margin: 0; font-size: 24px; padding-bottom: 10px'> Make the domain almost* immutable! </p>
 			<div style = 'display: grid; width: 100%; gap: 10px; padding-bottom: 10px;'>
 				<p style = 'margin: 0;'>{ `Content hash:` }</p>
 				<input
@@ -333,7 +355,7 @@ const NonImmutableDomain = ({ checkBoxes, maybeAccountAddress, updateInfos, crea
 			<DisplayError message = { ownershipIssues } />
 			<SwitchAddress requirementsMet = { loadingInfos.value } maybeAccountAddress = { maybeAccountAddress } maybeSigningAddress = { maybeSigningAddress }/>
 		</div>
-		<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { ownershipIssues.value !== undefined || wrappedIssues.value !== undefined || areContractsDeployed.value !== true || !contentSetProperly.value || !rightAddress.value || checkBoxes.deepValue === undefined || loadingInfos.value || creating.value } onClick = { makeImmutable }> Make immutable { creating.value ? <Spinner/> : <></> }</button>
+		<button style = 'font-size: 3em;' class = 'button is-primary' disabled = { ownershipIssues.value !== undefined || wrappedIssues.value !== undefined || areContractsDeployed.value !== true || !contentSetProperly.value || !rightAddress.value || checkBoxes.deepValue === undefined || loadingInfos.value || creating.value } onClick = { makeImmutable }> Make almost* immutable { creating.value ? <Spinner/> : <></> }</button>
 	</div>
 }
 
