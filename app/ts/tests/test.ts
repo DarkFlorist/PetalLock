@@ -17,14 +17,14 @@ const rpc = 'https://geth.dark.florist' as const
 
 const petalLockAddress = 0x93741n
 
-const subdomainRouteNames2 = ['darkflorist.eth', 'immutable.darkflorist.eth'] as const
-const subdomainRouteNames3 = ['darkflorist.eth', 'midname.darkflorist.eth', 'immutable.midname.darkflorist.eth'] as const
-const subdomainRouteNames3_another = ['darkflorist.eth', 'midname.darkflorist.eth', 'immutable2.midname.darkflorist.eth'] as const
-const ownAddress = 0x6D6054F7745a3Aaf4d1E4ac5830E4ABDc328Ab6Bn
+const subdomainRouteNames2 = ['augurfork.eth', 'immutable.augurfork.eth'] as const
+const subdomainRouteNames3 = ['augurfork.eth', 'midname.augurfork.eth', 'immutable.midname.augurfork.eth'] as const
+const subdomainRouteNames3_another = ['augurfork.eth', 'midname.augurfork.eth', 'immutable2.midname.augurfork.eth'] as const
+const ownAddress = 0xed1e06B49C53293A1321Dd47Abf8D50F9Be77E11n
 const whale = 0x000054F774000Aaf4d100000000E4ABDc328Ab6Bn
 const testContentHash = 'ipfs://bafybeie7zcqhap5vopmfmacoy6xa5jxguxepeseca4iilnchvydqkivnue'
 
-const makeImmutableDomain = (routenames: readonly string[], ownedTokens: readonly bigint[]) => { // 'darkflorist.eth', 'immutable.darkflorist.eth'
+const makeImmutableDomain = (routenames: readonly string[], ownedTokens: readonly bigint[]) => { // 'augurfork.eth', 'immutable.augurfork.eth'
 	const tx = getPetalLockUseTransaction(
 		addressString(petalLockAddress),
 		addressString(ownAddress),
