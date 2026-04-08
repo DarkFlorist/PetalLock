@@ -2,13 +2,13 @@
 # App Setup: Install dependencies and build app
 # ---------------------------------------------
 
-FROM node:20-alpine3.19@sha256:e96618520c7db4c3e082648678ab72a49b73367b9a1e7884cf75ac30a198e454 as builder
+FROM oven/bun:1.3.11-alpine@sha256:d5033b198b338c67e514f404e777ee818e18d1b031b0c4ac0eb1112032ae7bf7 AS builder
 
 # Install app dependencies
 COPY ./package.json /source/package.json
-COPY ./package-lock.json /source/package-lock.json
+COPY ./bun.lock /source/bun.lock
 WORKDIR /source
-RUN npm ci
+RUN bun install --frozen-lockfile
 
 # Run the vendoring script, compile contracts and build
 COPY ./build/ /source/build/
@@ -21,14 +21,14 @@ COPY ./app/favicon.ico /source/app/favicon.ico
 COPY ./app/favicon.svg /source/app/favicon.svg
 COPY ./solidity/ /source/solidity
 
-RUN npm run setup
+RUN bun run setup
 
 # --------------------------------------------------------
 # Base Image: Create the base image that will host the app
 # --------------------------------------------------------
 
 # Cache the kubo image
-FROM ipfs/kubo:v0.25.0@sha256:0c17b91cab8ada485f253e204236b712d0965f3d463cb5b60639ddd2291e7c52 as ipfs-kubo
+FROM ipfs/kubo:v0.25.0@sha256:0c17b91cab8ada485f253e204236b712d0965f3d463cb5b60639ddd2291e7c52 AS ipfs-kubo
 
 # Create the base image
 FROM debian:12.6-slim@sha256:39868a6f452462b70cf720a8daff250c63e7342970e749059c105bf7c1e8eeaf
@@ -56,7 +56,7 @@ RUN cat ipfs_hash.txt
 # Publish Script: Option to host app locally or on nft.storage
 # --------------------------------------------------------
 
-WORKDIR ~
+WORKDIR /tmp
 COPY <<'EOF' /entrypoint.sh
 #!/bin/sh
 set -e

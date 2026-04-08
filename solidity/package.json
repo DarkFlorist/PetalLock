@@ -3,7 +3,7 @@
 	"version": "1.0.0",
 	"description": "",
 	"scripts": {
-		"compile": "tsc && node ./compile.js && node --input-type=module -e \"import { promises as fs } from 'fs'; await fs.rm('./compile.js')\""
+		"compile": "bun ./compile.ts"
 	},
 	"keywords": [],
 	"author": "",
