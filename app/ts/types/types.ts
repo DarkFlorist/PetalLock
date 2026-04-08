@@ -54,3 +54,6 @@ export type EnsFuseName =
 	| 'Can Do Everything'
 
 export type AccountAddress = `0x${ string }`
+
+// https://github.com/microsoft/TypeScript/issues/54451
+export type RemoveFields<T, K extends keyof T> = { [P in keyof T as P extends K ? never : P]: T[P] }

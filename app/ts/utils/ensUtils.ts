@@ -12,6 +12,7 @@ import { tryEncodeContentHash } from './contenthash.js'
 import { petalLockContractArtifact } from '../VendoredPetalLock.js'
 import { PETAL_LOCK_ABI } from '../abi/petal_lock_abi.js'
 import { ENS_REGISTRAR_CONTROLLER_ABI } from '../abi/ens_registrar_controller_abi.js'
+import { readContractSafeWrapIfSafeIsEnabled, writeContractSafeWrapIfSafeIsEnabled, sendTransactionSafeWrapIfSafeIsEnabled, getCurrentWriteAccount } from './safe.js'
 
 export const extractENSFuses = (uint: bigint): readonly EnsFuseName[] => {
 	if (uint === CAN_DO_EVERYTHING) return ['Can Do Everything']
@@ -47,14 +48,14 @@ export const getAccounts = async () => {
 	return reply[0]
 }
 
-const createReadClient = (accountAddress: AccountAddress | undefined) => {
+export const createReadClient = (accountAddress: AccountAddress | undefined) => {
 	if (window.ethereum === undefined || accountAddress === undefined) {
 		return createPublicClient({ chain: mainnet, transport: http('https://ethereum.dark.florist', { batch: { wait: 100 } }) })
 	}
 	return createWalletClient({ chain: mainnet, transport: custom(window.ethereum) }).extend(publicActions)
 }
 
-const createWriteClient = (accountAddress: AccountAddress) => {
+export const createWriteClient = (accountAddress: AccountAddress) => {
 	if (window.ethereum === undefined) throw new Error('no window.ethereum injected')
 	if (accountAddress === undefined) throw new Error('no accountAddress!')
 	return createWalletClient({ account: accountAddress, chain: mainnet, transport: custom(window.ethereum) }).extend(publicActions)
@@ -131,7 +132,7 @@ const getDomainInfo = async (accountAddress: AccountAddress | undefined, nameHas
 		args: [nameHash]
 	})
 
-	const approvedPromise = client.readContract({
+	const approvedPromise = readContractSafeWrapIfSafeIsEnabled(client, {
 		address: ENS_NAME_WRAPPER,
 		abi: ENS_WRAPPER_ABI,
 		functionName: 'getApproved',
@@ -220,7 +221,7 @@ export async function ensureProxyDeployerDeployed(accountAddress: AccountAddress
 	const wallet = createWriteClient(accountAddress)
 	const deployerBytecode = await wallet.getCode({ address: proxyDeployerAddress })
 	if (deployerBytecode === '0x60003681823780368234f58015156014578182fd5b80825250506014600cf3') return
-	const ethSendHash = await wallet.sendTransaction({ to: '0x4c8d290a1b368ac4728d83a9e8321fc3af2b39b1', amount: 10000000000000000n })
+	const ethSendHash = await sendTransactionSafeWrapIfSafeIsEnabled(wallet, { to: '0x4c8d290a1b368ac4728d83a9e8321fc3af2b39b1', value: 10000000000000000n })
 	await wallet.waitForTransactionReceipt({ hash: ethSendHash })
 	const deployHash = await wallet.sendRawTransaction({ serializedTransaction: '0xf87e8085174876e800830186a08080ad601f80600e600039806000f350fe60003681823780368234f58015156014578182fd5b80825250506014600cf31ba02222222222222222222222222222222222222222222222222222222222222222a02222222222222222222222222222222222222222222222222222222222222222' })
 	await wallet.waitForTransactionReceipt({ hash: deployHash })
@@ -273,16 +274,17 @@ export const deployPetalLockAndRenewalManager = async (accountAddress: AccountAd
 	await ensureProxyDeployerDeployed(accountAddress)
 	const client = createWriteClient(accountAddress)
 	if (!openRenewalManagerDeployed) {
-		const hash = await client.sendTransaction(deployOpenRenewalManagerTransaction())
+		const hash = await sendTransactionSafeWrapIfSafeIsEnabled(client, deployOpenRenewalManagerTransaction())
 		await client.waitForTransactionReceipt({ hash })
 	}
 	if (!petalLockDeployed) {
-		const hash = await client.sendTransaction(deployPetalLockTransaction())
+		const hash = await sendTransactionSafeWrapIfSafeIsEnabled(client, deployPetalLockTransaction())
 		await client.waitForTransactionReceipt({ hash })
 	}
 }
 
 export const getPetalLockUseTransaction = (petalLockAddress: AccountAddress, accountAddress: AccountAddress, subdomainRouteNames: string[], ownedTokens: bigint[], contentHash: string, resolutionAddress: string) => {
+	const effectiveAccountAddress = getCurrentWriteAccount(accountAddress)
 	const labels = subdomainRouteNames.map((p) => {
 		const [label] = p.split('.')
 		if (label === undefined) throw new Error('Not a valid ENS sub domain')
@@ -299,11 +301,11 @@ export const getPetalLockUseTransaction = (petalLockAddress: AccountAddress, acc
 	], [labels, encodedContentHash, decodedResolutionAddress])
 	return {
 		chain: mainnet,
-		account: accountAddress,
+		account: effectiveAccountAddress,
 		address: ENS_NAME_WRAPPER,
 		abi: ENS_WRAPPER_ABI,
 		functionName: 'safeBatchTransferFrom',
-		args: [accountAddress, petalLockAddress, ownedTokens, ownedTokens.map(() => 1n), data]
+		args: [effectiveAccountAddress, petalLockAddress, ownedTokens, ownedTokens.map(() => 1n), data]
 	} as const
 }
 
@@ -313,7 +315,7 @@ export const callPetalLock = async (accountAddress: AccountAddress, domainInfos:
 	const subdomainRouteNames = domainInfos.map((x) => x.subDomain)
 	const ownedTokens = domainInfos.filter((info) => info.registered).map((info) => BigInt(info.nameHash))
 	const write = getPetalLockUseTransaction(petalLockAddress, accountAddress, subdomainRouteNames, ownedTokens, contentHash, resolutionAddress)
-	const hash = await client.writeContract(write)
+	const hash = await writeContractSafeWrapIfSafeIsEnabled(client, write)
 	return await client.waitForTransactionReceipt({ hash })
 }
 
@@ -336,10 +338,10 @@ export const renewDomainByYear = async (accountAddress: AccountAddress, extendYe
 		}) : { base: 0n, premium: 0n }
 	))).reduce((agg, current) => agg + current.base, 0n)
 
-	const hash = await client.writeContract({
+	const hash = await writeContractSafeWrapIfSafeIsEnabled(client, {
 		value: totalRentCost,
 		chain: mainnet,
-		account: accountAddress,
+		account: getCurrentWriteAccount(accountAddress),
 		address: petalLockAddress,
 		abi: PETAL_LOCK_ABI,
 		functionName: 'batchExtend',
@@ -357,9 +359,9 @@ export const renewDomainToMax = async (accountAddress: AccountAddress, domainInf
 		domainExpiry: 0n
 	}))
 
-	const hash = await client.writeContract({
+	const hash = await writeContractSafeWrapIfSafeIsEnabled(client, {
 		chain: mainnet,
-		account: accountAddress,
+		account: getCurrentWriteAccount(accountAddress),
 		address: petalLockAddress,
 		abi: PETAL_LOCK_ABI,
 		functionName: 'batchExtend',
