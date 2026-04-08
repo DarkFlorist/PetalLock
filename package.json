@@ -21,7 +21,7 @@
 		"contracts": "cd solidity && bun install --frozen-lockfile && bun run compile && cd .. && bun run vendor",
 		"test": "bun ./app/ts/tests/test.js",
 		"build": "bun --bun tsc",
-		"serve": "bun x http-server ./app",
+		"serve": "bun ./dev-server.mjs",
 		"vendor": "bun --tsconfig-override tsconfig.vendor.json ./build/vendor.mts"
 	}
 }
