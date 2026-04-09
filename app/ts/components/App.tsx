@@ -1,12 +1,14 @@
-import { Signal, useSignal } from '@preact/signals'
+import { Signal, useComputed, useSignal } from '@preact/signals'
 import { useEffect, useRef } from 'preact/hooks'
-import { requestAccounts, isValidEnsSubDomain, isChildOwnershipOwnedByOpenRenewManager, getAccounts, getDomainInfos, isPetalLockAndOpenRenewalManagerDeployed, getOpenRenewalManagerAddress, areRequiredFusesBurntWithoutApproval, isChildOwnershipGivenAway } from '../utils/ensUtils.js'
+import { requestAccounts, isValidEnsSubDomain, isChildOwnershipOwnedByOpenRenewManager, getAccounts, getDomainInfos, isPetalLockAndOpenRenewalManagerDeployed, getOpenRenewalManagerAddress, areRequiredFusesBurntWithoutApproval, isChildOwnershipGivenAway, createWriteClient } from '../utils/ensUtils.js'
 import { BigSpinner } from './Spinner.js'
 import { ensureError } from '../utils/utilities.js'
 import { AccountAddress, CheckBoxes, DomainInfo, FinalChildChecks, ParentChecks } from '../types/types.js'
 import { Create, Immutable, Requirements } from './requirements.js'
 import { OptionalSignal, useOptionalSignal } from '../utils/OptionalSignal.js'
 import { getChainId } from '../utils/ensUtils.js'
+import { getCurrentReadAccount, isValidSafeAccountWalletCombination } from '../utils/safe.js'
+import { Settings } from './Settings.js'
 
 interface WalletComponentProps {
 	maybeAccountAddress: OptionalSignal<AccountAddress>
@@ -20,8 +22,9 @@ const WalletComponent = ({ maybeAccountAddress, loadingAccount, isWindowEthereum
 	const connect = async () => {
 		maybeAccountAddress.deepValue = await requestAccounts()
 	}
-	return maybeAccountAddress.value !== undefined ? (
-		<p style = 'color: gray; justify-self: right;'>{ `Connected with ${ maybeAccountAddress.value }` }</p>
+	const displayAddress = useComputed(() => getCurrentReadAccount(maybeAccountAddress.deepValue))
+	return displayAddress.value !== undefined ? (
+		<p style = 'color: gray; justify-self: right;'>{ `Connected with ${ displayAddress.value }` }</p>
 	) : (
 		<button class = 'button is-primary' style = 'justify-self: right;' onClick = { connect }>
 			{ `Connect wallet` }
@@ -166,13 +169,28 @@ export function App() {
 		chainId.value = await getChainId(account)
 	}
 
+	const reCheckSafeConnection = async () => {
+		const account = maybeAccountAddress.deepPeek()
+		if (account === undefined) return
+		try {
+			const client = createWriteClient(account)
+			const valid = await isValidSafeAccountWalletCombination(client)
+			if (!valid) setError(`window.ethereum's account does not match the safe owner`)
+		} catch(error: unknown) {
+			setError(error)
+		}
+	}
+
 	useEffect(() => {
 		if (window.ethereum === undefined) {
 			isWindowEthereum.value = false
 			return
 		}
 		isWindowEthereum.value = true
-		window.ethereum.on('accountsChanged', function (accounts) { maybeAccountAddress.deepValue = accounts[0] })
+		window.ethereum.on('accountsChanged', function (accounts) {
+			maybeAccountAddress.deepValue = accounts[0]
+			reCheckSafeConnection()
+		})
 		window.ethereum.on('chainChanged', async () => { updateChainId() })
 		const fetchAccount = async () => {
 			try {
@@ -187,7 +205,7 @@ export function App() {
 				areContractsDeployed.value = await isPetalLockAndOpenRenewalManagerDeployed(maybeAccountAddress.deepValue)
 			}
 		}
-		fetchAccount()
+		fetchAccount().then(() => reCheckSafeConnection())
 		return () => {
 			if (inputTimeoutRef.current !== null) {
 				clearTimeout(inputTimeoutRef.current)
@@ -241,6 +259,8 @@ export function App() {
 				extendYear = { extendYear }
 				extending = { extending }
 			/>
+
+			<Settings/>
 		</div>
 		<div class = 'text-white/50 text-center'>
 			<p style = 'max-width: 700px;'>*)

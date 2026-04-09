@@ -8,6 +8,7 @@ import { Spinner } from './Spinner.js'
 import { isAddress } from 'viem'
 import { YearPicker } from './YearPicker.js'
 import { ENS_NAME_WRAPPER } from '../utils/constants.js'
+import { getCurrentReadAccount } from '../utils/safe.js'
 
 interface SwitchAddressProps {
 	maybeAccountAddress: OptionalSignal<AccountAddress>
@@ -19,7 +20,7 @@ export const SwitchAddress = ({ maybeSigningAddress, maybeAccountAddress, requir
 	if (requirementsMet) return <></>
 	if (maybeSigningAddress.value === undefined) return <></>
 	if (BigInt(maybeSigningAddress.value) === 0n) return <></>
-	if (isSameAddress(maybeAccountAddress.deepValue, maybeSigningAddress.value) ) return <></>
+	if (isSameAddress(getCurrentReadAccount(maybeAccountAddress.deepValue), maybeSigningAddress.value) ) return <></>
 	return <p class = 'paragraph' style = 'color: #b43c42'> { ` - Switch to ${ maybeSigningAddress } to sign` } </p>
 }
 
@@ -290,7 +291,7 @@ const NonImmutableDomain = ({ checkBoxes, maybeAccountAddress, updateInfos, crea
 		return checkBoxes.deepValue[0]?.domainInfo.owner
 	})
 
-	const rightAddress = useComputed(() => isSameAddress(maybeSigningAddress.value, maybeAccountAddress.deepValue))
+	const rightAddress = useComputed(() => isSameAddress(getCurrentReadAccount(maybeAccountAddress.deepValue), maybeSigningAddress.value))
 	const validContenthash = useComputed(() => isValidContentHashString(contentHashInput.value.trim()))
 	const validResolutionAddress = useComputed(() => isAddress(resolutionAddressInput.value.trim()))
 
